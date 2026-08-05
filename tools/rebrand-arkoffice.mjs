@@ -8,15 +8,7 @@ import { join, extname, relative } from 'node:path'
 
 const root = process.cwd()
 
-const SKIP_DIRS = new Set([
-  '.git',
-  'node_modules',
-  'out',
-  'dist',
-  'release',
-  'fixtures',
-  '.cursor',
-])
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'out', 'dist', 'release', 'fixtures', '.cursor'])
 
 const TEXT_EXT = new Set([
   '.ts',
@@ -83,9 +75,7 @@ function transform(content, rel) {
 
   // check-no-ee and CONTRIBUTING mentions of upstream ee / ArkOffice Enterprise — keep "ArkOffice Enterprise"
   if (rel.replace(/\\/g, '/').endsWith('tools/check-no-ee.mjs')) {
-    return content
-      .replace(/@arkoffice\b/g, '@arkoffice')
-      .replace(/\bgenoffice\b/g, 'arkoffice')
+    return content.replace(/@arkoffice\b/g, '@arkoffice').replace(/\bgenoffice\b/g, 'arkoffice')
   }
 
   let next = content

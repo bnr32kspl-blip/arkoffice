@@ -39,11 +39,7 @@ import {
 import { readAppSettings, writeAppSetting } from './app-settings'
 import { readShellAiSettings } from './ai-settings-file'
 import { getModelsDirStatus } from './llm-models'
-import {
-  ensureLlmRuntime,
-  getLlmRuntimeStatus,
-  stopLlmRuntime,
-} from './llm-runtime'
+import { ensureLlmRuntime, getLlmRuntimeStatus, stopLlmRuntime } from './llm-runtime'
 import { ProjectStore } from '@arkoffice/project-store'
 import { pickGgufModel } from '@arkoffice/ai-provider'
 import {
@@ -528,7 +524,8 @@ const tMain = createI18n({
     pdfDocxNoCliMsg:
       'Anmeldung bei ArkOffice nicht möglich: Eine erforderliche Komponente (gsk) fehlt. Bitte installieren Sie die App neu.',
     pdfDocxBusyMsg: 'Ein Word-Export läuft bereits. Bitte warten Sie, bis er abgeschlossen ist.',
-    pdfDocxCloudOffMsg: 'Aktivieren Sie Cloud-Funktionen in den Einstellungen, um als Word zu exportieren.',
+    pdfDocxCloudOffMsg:
+      'Aktivieren Sie Cloud-Funktionen in den Einstellungen, um als Word zu exportieren.',
   },
   es: {
     menuFile: 'Archivo',
@@ -1060,7 +1057,8 @@ const tMain = createI18n({
     pdfDocxBtnConvert: 'המשך',
     btnCancel: 'ביטול',
     pdfDocxFailedMsg: 'הייצוא כ-Word נכשל',
-    pdfDocxNoCliMsg: 'לא ניתן להתחבר ל-ArkOffice: רכיב נדרש (gsk) חסר. נא להתקין מחדש את האפליקציה.',
+    pdfDocxNoCliMsg:
+      'לא ניתן להתחבר ל-ArkOffice: רכיב נדרש (gsk) חסר. נא להתקין מחדש את האפליקציה.',
     pdfDocxBusyMsg: 'ייצוא ל-Word כבר מתבצע. נא להמתין לסיומו.',
     pdfDocxCloudOffMsg: 'הפעל תכונות ענן בהגדרות כדי לייצא ל-Word.',
   },
@@ -1224,7 +1222,11 @@ function shellWindowIcon(): string | undefined {
   // Packaged Windows/Linux use the exe/desktop icon from electron-builder.
   // Dev builds need an explicit path so the taskbar shows the Ark mark.
   if (app.isPackaged) return undefined
-  const ico = join(app.getAppPath(), 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
+  const ico = join(
+    app.getAppPath(),
+    'build',
+    process.platform === 'win32' ? 'icon.ico' : 'icon.png',
+  )
   return existsSync(ico) ? ico : undefined
 }
 
@@ -1709,25 +1711,28 @@ function registerHomeIpc(): void {
     }
   })
 
-  ipcMain.handle(HOME_CHANNELS.listGgufModels, (): import('../shared/llm-models-api').GgufModelsSnapshot => {
-    const resolved = readShellAiSettings()
-    const status = getModelsDirStatus(resolved.modelsDir)
-    const picked = pickGgufModel(status.models, resolved.selectedModelFile)
-    return {
-      path: status.path,
-      exists: status.exists,
-      created: status.created,
-      error: status.error,
-      models: status.models.map((m) => ({
-        id: m.id,
-        fileName: m.fileName,
-        absolutePath: m.absolutePath,
-        sizeBytes: m.sizeBytes,
-      })),
-      selectedId: picked.id,
-      missingSelection: picked.missingSelection,
-    }
-  })
+  ipcMain.handle(
+    HOME_CHANNELS.listGgufModels,
+    (): import('../shared/llm-models-api').GgufModelsSnapshot => {
+      const resolved = readShellAiSettings()
+      const status = getModelsDirStatus(resolved.modelsDir)
+      const picked = pickGgufModel(status.models, resolved.selectedModelFile)
+      return {
+        path: status.path,
+        exists: status.exists,
+        created: status.created,
+        error: status.error,
+        models: status.models.map((m) => ({
+          id: m.id,
+          fileName: m.fileName,
+          absolutePath: m.absolutePath,
+          sizeBytes: m.sizeBytes,
+        })),
+        selectedId: picked.id,
+        missingSelection: picked.missingSelection,
+      }
+    },
+  )
 
   ipcMain.handle(HOME_CHANNELS.revealModelsDir, async (): Promise<boolean> => {
     const resolved = readShellAiSettings()
