@@ -51,22 +51,60 @@ ArkOffice に upstream ベンダーの署名身分は同梱しません。未署
 
 閉域向けビルドでは、イントラネット更新フィードを自前運用し、かつ `ARKOFFICE_AUTO_UPDATE=1` を設定する場合を除き、`ARKOFFICE_UPDATE_URL` を設定しないでください。
 
-## ローカル LLM（llama.cpp）
+## 同梱 llama-server（Windows）
 
-各端末（または拠点内 LAN のみ到達可能な推論ホスト）で:
+リリース／開発ビルドでは、次を `apps/shell/vendor/llm/` に置くとインストーラの `resources/llm` に同梱されます（詳細は同ディレクトリの README）。
+
+- `llama-server-cuda.exe` / `llama-server-vulkan.exe` / `llama-server-cpu.exe`
+
+**ローカルモード**起動時、ArkOffice が次を行います。
+
+1. 同梱 `llama-server` を loopback の内部ポート（公開ポート + 10000）で起動（`-np 1`）
+2. 公開ポート（既定 8080）に待ち行列プロキシを立て、OpenAI 互換 API と `GET /arkoffice/queue` を提供
+3. アプリ終了時に子プロセスとプロキシを停止
+
+リモートモードでは同梱サーバ・プロキシは起動しません。上書きパス: `ARKOFFICE_LLM_DIR`。
+
+## 推論ホストとして LAN 公開する場合
+
+推論用 PC でローカルモードを使い、「AI 推論の設定」で **同一 LAN の他端末からの接続を許可する** をオンにします（`listenLan: true`）。待ち行列プロキシが `0.0.0.0:8080`（既定ポート）で待受し、背後の llama-server は loopback のみです。
+
+1. Windows ファイアウォールで **受信** TCP 8080（または設定したポート）を、拠点内セグメントからのみ許可する  
+2. 他端末はリモートモードで Base URL を `http://<推論ホストのLAN IP>:8080/v1` にする  
+3. オプトイン OFF（既定）では `127.0.0.1` のみ待受のため、他端末からは接続できない  
+4. 管理者上書き: 環境変数 `ARKOFFICE_LLM_LISTEN_LAN=1`  
+5. 混雑時は AI パネルに順番待ちが表示される（プロキシ経由）
+
+## ローカル LLM（モデル配置）
+
+モデルファイル（`.gguf`）はアプリに同梱しません。Windows では次のフォルダに配置します。
+
+```
+%ProgramData%\ArkOffice\models
+```
+
+（例: `C:\ProgramData\ArkOffice\models`）。サブフォルダは 1 階層まで検索されます。上書きは環境変数 `ARKOFFICE_MODELS_DIR`。アプリの「AI 推論の設定」からフォルダを開けます。
+
+### 同梱ランタイムを使う場合（推奨）
+
+初回ウィザードまたは「AI 推論の設定」で **この PC で推論** を選び、モデルを選択するだけで利用できます。Base URL は自動で `http://127.0.0.1:8080/v1` になります。
+
+### 外部の llama-server / Ollama を使う場合
+
+同梱バイナリを置かない展開では、各端末（または拠点内の推論ホスト）で手動起動します。
 
 ```bash
-llama-server -m /path/to/model.gguf --host 127.0.0.1 --port 8080
+llama-server -m /path/to/model.gguf --host 127.0.0.1 --port 8080 -np 1
 ```
 
 ArkOffice の AI 設定:
 
-- プロバイダ: **Local (llama.cpp)**
+- プロバイダ: **Local (llama.cpp)** またはリモートモードで Base URL 指定
 - Base URL: `http://127.0.0.1:8080/v1`（または `http://<イントラネットホスト>:8080/v1`）
 - モデル: サーバが公開する ID（多くの場合モデルファイル名のステム）
 - API キー: ゲートウェイが要求しない限り空欄
 
-llama.cpp バイナリの同梱が難しい場合は、Ollama（`http://127.0.0.1:11434/v1`）を代替として利用できます。
+Ollama（`http://127.0.0.1:11434/v1`）も代替として利用できます。外部サーバに待ち行列プロキシが無い場合、順番待ち UI は出ないことがあります。
 
 設定ファイルの例（管理者がアプリの `userData` に配置する場合のみ）: [`examples/ai-settings.local.example.json`](examples/ai-settings.local.example.json)
 
@@ -93,6 +131,7 @@ npm run check:airgap
 
 ## 関連ドキュメント
 
+- [ローカル LLM ランタイム仕様](local-llm-runtime.md) — 同梱 llama-server・GGUF 配置・リモート推論・GPU 選択
 - [SECURITY.md](../SECURITY.md) — プロセスセキュリティと AI の脅威モデル
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — 環境変数（開発者向け・英語）
 - [README.md](../README.md) — 製品経緯と実装状況

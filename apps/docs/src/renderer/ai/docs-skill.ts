@@ -12,11 +12,17 @@ export function createDocsSkill(
   getEditor: () => Editor,
   getNumIds: () => NumIds,
   getTrack?: () => AiTrack | undefined,
+  cloudFeaturesEnabled: () => boolean = () => false,
 ): AgentSkill {
+  const cloudTools = new Set(['web_search', 'image_search'])
   return {
     id: 'docx',
     systemPrompt: AGENT_SYSTEM_PROMPT,
-    tools: AGENT_TOOLS,
+    get tools() {
+      return cloudFeaturesEnabled()
+        ? AGENT_TOOLS
+        : AGENT_TOOLS.filter((tool) => !cloudTools.has(tool.name))
+    },
     buildContext: () => {
       const editor = getEditor()
       markDocSeen(editor) // the context the model receives is the freshness baseline for index-addressed writes

@@ -142,8 +142,45 @@ const homeApi: HomeApi = {
   async setOnboardingSeen() {
     await ipcRenderer.invoke(HOME_CHANNELS.setOnboardingSeen)
   },
-  async openGenTeam() {
-    await ipcRenderer.invoke(HOME_CHANNELS.openGenTeam)
+  async llmRuntimeSeen() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.llmRuntimeSeen)
+    return result === true
+  },
+  async setLlmRuntimeSeen() {
+    await ipcRenderer.invoke(HOME_CHANNELS.setLlmRuntimeSeen)
+  },
+  async cloudFeaturesEnabled() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.cloudFeaturesEnabled)
+    return result === true
+  },
+  async setCloudFeaturesEnabled(enabled) {
+    await ipcRenderer.invoke(HOME_CHANNELS.setCloudFeaturesEnabled, enabled === true)
+  },
+  async listGgufModels() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.listGgufModels)
+    return result as import('../shared/llm-models-api').GgufModelsSnapshot
+  },
+  async revealModelsDir() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.revealModelsDir)
+    return result === true
+  },
+  async llmRuntimeStatus() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.llmRuntimeStatus)
+    return result as import('../shared/llm-models-api').LlmRuntimeStatusDto
+  },
+  async llmRuntimeEnsure() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.llmRuntimeEnsure)
+    return result as import('../shared/llm-models-api').LlmRuntimeStatusDto
+  },
+  async getAiSettings() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getAiSettings)
+    return result as import('@arkoffice/ai-provider').AiSettings
+  },
+  async setAiSettings(settings) {
+    await ipcRenderer.invoke(HOME_CHANNELS.setAiSettings, settings)
+  },
+  async openCommunity() {
+    await ipcRenderer.invoke(HOME_CHANNELS.openCommunity)
   },
 }
 

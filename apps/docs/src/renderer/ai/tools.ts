@@ -293,6 +293,12 @@ async function executeAsyncTool(
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumWebSearch'), 'query must not be empty')
       const r = await window.desktop.webSearch(query, Number(call.input.maxResults) || 6)
+      if (r.method === 'disabled') {
+        return fail(
+          t('aiSumWebSearch'),
+          'Web search is disabled. Enable Cloud features in Settings (sidebar), or set ARKOFFICE_ALLOW_WEB_SEARCH=1. Continue with attachment/user content only; do not invent live web facts.',
+        )
+      }
       // a backend failure must not read as "no results" — the model would fabricate conclusions
       if (r.method === 'error') {
         return fail(
@@ -315,6 +321,12 @@ async function executeAsyncTool(
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumImageSearch'), 'query must not be empty')
       const r = await window.desktop.imageSearch(query, Number(call.input.maxResults) || 8)
+      if (r.method === 'disabled') {
+        return fail(
+          t('aiSumImageSearch'),
+          'Image search is disabled. Enable Cloud features in Settings (sidebar), or set ARKOFFICE_ALLOW_WEB_SEARCH=1. Continue without stock photos.',
+        )
+      }
       // a backend failure must not read as an empty gallery — the model would fabricate image choices
       if (r.method === 'error') {
         return fail(

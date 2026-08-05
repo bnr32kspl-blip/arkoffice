@@ -553,6 +553,22 @@ export function App(): React.JSX.Element {
   const [attachNotice, setAttachNotice] = useState<string | null>(null)
   const attachmentsRef = useRef(attachments)
   attachmentsRef.current = attachments
+  const cloudFeaturesRef = useRef(false)
+
+  useEffect(() => {
+    let alive = true
+    void window.desktopApi.cloudFeaturesEnabled?.().then((on) => {
+      if (alive) cloudFeaturesRef.current = on
+    })
+    const unsub = window.desktopApi.onCloudFeaturesChanged?.((on) => {
+      cloudFeaturesRef.current = on
+    })
+    return () => {
+      alive = false
+      unsub?.()
+    }
+  }, [])
+
   /** Synchronous re-entrancy guard between runAgent trigger and loop.run
    * (loop.busy is still false while attachment images load asynchronously) */
   const runStartingRef = useRef(false)
@@ -760,7 +776,7 @@ export function App(): React.JSX.Element {
       skill: composeSkills('sheets+files', '', [
         createWorkbookSkill(sheetsSkillDeps()),
         createFilesSkill(() => attachmentsRef.current),
-        createSearchSkill(),
+        createSearchSkill(() => cloudFeaturesRef.current),
       ]),
       // guide loading adds a tool round; the default 8 cuts off multi-step work
       maxTurns: 24,
@@ -771,7 +787,16 @@ export function App(): React.JSX.Element {
           // When the model retries successfully and keeps streaming after a
           // mid-run failure (e.g. one apply error), clear the error flag —
           // otherwise the whole successful message stays rendered in red.
-          patchLastAssistant((entry) => ({ ...entry, text, isError: false }))
+          patchLastAssistant((entry) => ({ ...entry, text, isError: false, queuePosition: null }))
+        },
+        onQueue: (info) => {
+          const queuePosition =
+            info.position !== null && info.position > 0
+              ? info.position
+              : info.waiting > 0
+                ? info.waiting
+                : null
+          patchLastAssistant((entry) => ({ ...entry, queuePosition }))
         },
         onToolStart: (call) => {
           // Live "running" chip: replaced in place by onToolExecuted

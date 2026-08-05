@@ -1,5 +1,13 @@
 {
   "provider": "local",
+  "runtimeMode": "local",
+  "remoteBaseUrl": "",
+  "listenLan": false,
+  "backend": "auto",
+  "modelsDir": null,
+  "selectedModelFile": null,
+  "port": 8080,
+  "llmRuntimeConfigured": true,
   "providers": {
     "local": {
       "apiKey": "",

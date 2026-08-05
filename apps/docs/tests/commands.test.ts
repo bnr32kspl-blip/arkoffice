@@ -86,7 +86,7 @@ function fixtureDoc(): JsonNode[] {
         docxIndex: 0,
       },
     ),
-    para([text('GenSpark intro,'), text('GenSpark is great', [{ type: 'bold' }])], { docxIndex: 1 }),
+    para([text('arkoffice intro,'), text('arkoffice is great', [{ type: 'bold' }])], { docxIndex: 1 }),
     heading([text('Risk Notes')], 2, { docxIndex: 2 }),
     para([text('Body paragraph')], { docxIndex: 3, align: 'center' }),
     listItem([text('List item')], { docxIndex: 4, numId: '1' }),
@@ -353,12 +353,12 @@ describe('replaceAllText', () => {
   it('replaces every occurrence and keeps marks', () => {
     const editor = createEditor(fixtureDoc())
     const outcome = executeCommands(editor, {
-      commands: [{ replaceAllText: { containsText: 'GenSpark', replaceText: 'Genspark' } }],
+      commands: [{ replaceAllText: { containsText: 'arkoffice', replaceText: 'ArkOffice' } }],
     })
     expect(outcome.ok).toBe(true)
     expect(outcome.results[0].detail).toBe('共替换 2 处')
     const block = editor.state.doc.child(1)
-    expect(block.textContent).toBe('Genspark intro,Genspark is great')
+    expect(block.textContent).toBe('ArkOffice intro,ArkOffice is great')
     const boldChild = block.child(block.childCount - 1)
     expect(boldChild.marks.some((m) => m.type.name === 'bold')).toBe(true)
   })
@@ -366,14 +366,14 @@ describe('replaceAllText', () => {
   it('matchCase: sensitive by default, insensitive when false', () => {
     const editor = createEditor(fixtureDoc())
     const strict = executeCommands(editor, {
-      commands: [{ replaceAllText: { containsText: 'genspark', replaceText: 'X' } }],
+      commands: [{ replaceAllText: { containsText: 'arkoffice', replaceText: 'X' } }],
     })
     expect(strict.results[0].changed).toBe(0)
-    expect(editor.state.doc.child(1).textContent).toContain('GenSpark')
+    expect(editor.state.doc.child(1).textContent).toContain('arkoffice')
 
     const loose = executeCommands(editor, {
       commands: [
-        { replaceAllText: { containsText: 'genspark', replaceText: 'X', matchCase: false } },
+        { replaceAllText: { containsText: 'arkoffice', replaceText: 'X', matchCase: false } },
       ],
     })
     expect(loose.results[0].detail).toBe('共替换 2 处')
@@ -477,7 +477,7 @@ describe('envelope validation', () => {
     const before = JSON.stringify(editor.getJSON())
     const outcome = executeCommands(editor, {
       commands: [
-        { replaceAllText: { containsText: 'GenSpark', replaceText: 'X' } },
+        { replaceAllText: { containsText: 'arkoffice', replaceText: 'X' } },
         { insertTable: { rows: 2 } },
       ],
     } as unknown as CommandEnvelope)
@@ -520,7 +520,7 @@ describe('transaction atomicity and aiChanged', () => {
             fields: ['color'],
           },
         },
-        { replaceAllText: { containsText: 'GenSpark', replaceText: 'Genspark' } },
+        { replaceAllText: { containsText: 'arkoffice', replaceText: 'ArkOffice' } },
         { deleteBlocks: { target: { blockIndexes: [3] } } },
       ],
     })

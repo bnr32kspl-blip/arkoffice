@@ -22,7 +22,7 @@ import type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
 
 export type {
@@ -34,9 +34,9 @@ export type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
-export { AI_PROVIDERS } from '@arkoffice/ai-provider'
+export { AI_PROVIDERS, defaultAiSettings } from '@arkoffice/ai-provider'
 
 // ---- agent protocol: canonical types live in @arkoffice/agent-core ----
 
@@ -140,6 +140,9 @@ export interface DesktopApi {
       lang: 'zh' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'th' | 'id' | 'ru' | 'ar',
     ) => void,
   ): () => void
+  /** optional online features opt-in (default off; local-first) */
+  cloudFeaturesEnabled(): Promise<boolean>
+  onCloudFeaturesChanged(handler: (enabled: boolean) => void): () => void
   openDocx(): Promise<OpenFileResult | null>
   openDocxPath(path: string): Promise<OpenFileResult | null>
   /** mark the renderer ready and consume a file passed by Finder/Explorer at launch */
@@ -201,9 +204,9 @@ export interface DesktopApi {
   /** start a streaming AI call; deltas arrive via onAiStream with the same requestId */
   aiStream(request: AiStreamRequest): Promise<void>
   aiStreamCancel(requestId: string): Promise<void>
-  /** Genspark account status (gsk login state); withEmail also returns the email (needs a network request, slower) */
-  aiGskStatus(withEmail?: boolean): Promise<GenSparkAccountStatus>
-  /** Open the browser to log in to Genspark (fire-and-forget; aiGskStatus flips to logged-in when done) */
+  /** Account status (gsk login state); withEmail also returns the email (needs a network request, slower) */
+  aiGskStatus(withEmail?: boolean): Promise<ToolCliAccountStatus>
+  /** Open the browser to log in to ArkOffice (fire-and-forget; aiGskStatus flips to logged-in when done) */
   aiGskLogin(): Promise<void>
   webSearch(
     query: string,

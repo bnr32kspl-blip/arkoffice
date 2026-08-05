@@ -20,6 +20,12 @@ const api: DesktopApi = {
     ipcRenderer.on('app:language-changed', listener)
     return () => ipcRenderer.removeListener('app:language-changed', listener)
   },
+  cloudFeaturesEnabled: () => ipcRenderer.invoke('app:cloud-features-enabled'),
+  onCloudFeaturesChanged: (handler) => {
+    const listener = (_event: IpcRendererEvent, enabled: boolean) => handler(enabled === true)
+    ipcRenderer.on('app:cloud-features-changed', listener)
+    return () => ipcRenderer.removeListener('app:cloud-features-changed', listener)
+  },
   openDocx: () => ipcRenderer.invoke('docs:open'),
   openDocxPath: (path: string) => ipcRenderer.invoke('docs:open-path', path),
   consumePendingOpenDocx: () => ipcRenderer.invoke('docs:consume-pending-open'),

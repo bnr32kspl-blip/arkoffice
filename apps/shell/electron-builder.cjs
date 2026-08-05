@@ -21,7 +21,7 @@ const { join } = require('node:path')
 
 const updateUrl = process.env.ARKOFFICE_UPDATE_URL
 
-/** Optional Genspark CLI resources — only bundled when present (air-gapped builds omit them). */
+/** Optional ArkOffice CLI resources — only bundled when present (air-gapped builds omit them). */
 const optionalGskResources = [
   {
     from: '../../node_modules/@genspark/cli',
@@ -32,6 +32,18 @@ const optionalGskResources = [
     to: 'gsk/node_modules/commander',
   },
 ].filter((entry) => existsSync(join(__dirname, entry.from)))
+
+/** Optional bundled llama-server binaries under vendor/llm (large; not in git). */
+const llmVendorDir = join(__dirname, 'vendor/llm')
+const optionalLlmResources = existsSync(llmVendorDir)
+  ? [
+      {
+        from: 'vendor/llm',
+        to: 'llm',
+        filter: ['**/*', '!**/*.md', '!**/.gitignore'],
+      },
+    ]
+  : []
 
 /** @type {import('electron-builder').Configuration} */
 const config = {
@@ -72,6 +84,7 @@ const config = {
       to: 'gsk/node_modules/ws',
     },
     ...optionalGskResources,
+    ...optionalLlmResources,
   ],
   fileAssociations: [
     {

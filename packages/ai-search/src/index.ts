@@ -1,7 +1,8 @@
 /**
- * Search utilities (main process). Outbound web/image search is disabled by
- * default for air-gapped deployments. Set ARKOFFICE_ALLOW_WEB_SEARCH=1 to
- * enable Serper / DuckDuckGo (and optional Genspark CLI if installed).
+ * Search utilities (main process). Outbound web/image search is off by default
+ * (local-first). Enable via Settings → Cloud features, or admin env:
+ * - ARKOFFICE_ALLOW_WEB_SEARCH=1 force search on (still respects cloud kill switch)
+ * - ARKOFFICE_ALLOW_WEB_SEARCH=0 force search off
  */
 
 import {
@@ -12,15 +13,27 @@ import {
   type WebSearchResult,
 } from './shared'
 import { gskImageSearch, gskWebSearch, hasGskAuth } from './gsk'
+import { isCloudFeaturesEnabled } from './cloud-features'
 
 export type { ImageSearchResult, WebSearchResult } from './shared'
 export * from './gsk'
+export {
+  CLOUD_FEATURES_SETTING_KEY,
+  configureCloudFeatures,
+  isCloudFeaturesEnabled,
+  setCloudFeaturesEnabled,
+} from './cloud-features'
 
 const SERPER_KEY = () => process.env.SERPER_API_KEY ?? ''
 
-/** Closed-network default: no outbound search unless explicitly enabled. */
+/**
+ * Outbound web/image search. Requires cloud features (user toggle) unless an
+ * admin forces search with ARKOFFICE_ALLOW_WEB_SEARCH=1.
+ */
 export function isWebSearchEnabled(): boolean {
-  return process.env.ARKOFFICE_ALLOW_WEB_SEARCH === '1'
+  if (process.env.ARKOFFICE_ALLOW_WEB_SEARCH === '0') return false
+  if (process.env.ARKOFFICE_ALLOW_WEB_SEARCH === '1') return true
+  return isCloudFeaturesEnabled()
 }
 
 // ── Web search ──────────────────────────────────────────────────────

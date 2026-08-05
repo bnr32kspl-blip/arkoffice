@@ -10,13 +10,14 @@ import { join } from 'node:path'
 import {
   AiCreditsError,
   AiTimeoutError,
+  applyRuntimeModeToSettings,
   defaultAiSettings,
   resolveAiSettings,
   streamForProvider,
   type AiSettings,
   type AiStreamChunk,
   type AiStreamRequest,
-  type GenSparkAccountStatus,
+  type ToolCliAccountStatus,
   type LegacyAiSettings,
 } from '@arkoffice/ai-provider'
 import { fetchWithSsrfGuard } from '@arkoffice/electron-utils'
@@ -26,6 +27,7 @@ import {
   gskGenerateImage,
   gskAnalyzeMedia,
   hasGskAuth,
+  isCloudFeaturesEnabled,
 } from '@arkoffice/ai-search'
 import { addPicture } from '@arkoffice/pptx-engine'
 import { EMU_PER_PX_96 } from '@arkoffice/pptx-render'
@@ -59,18 +61,21 @@ export function registerAiIpc(): void {
     return settings
   })
 
-  // Optional legacy channel; ArkOffice AI does not require Genspark login
+  // Optional legacy channel; ArkOffice AI does not require ArkOffice login
   ipcMain.handle(
     'ai:gsk-status',
-    async (): Promise<GenSparkAccountStatus> => ({ loggedIn: false }),
+    async (): Promise<ToolCliAccountStatus> => ({ loggedIn: false }),
   )
 
   ipcMain.handle('ai:gsk-login', () => {
-    /* no-op: cloud Genspark auth removed from the product path */
+    /* no-op: cloud ArkOffice auth removed from the product path */
   })
 
   ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {
-    writeJson(AI_SETTINGS_PATH(), settings)
+    const resolved = applyRuntimeModeToSettings(
+      resolveAiSettings(settings, defaultAiSettings()),
+    )
+    writeJson(AI_SETTINGS_PATH(), resolved)
   })
 
   ipcMain.handle('ai:stream', async (event, request: AiStreamRequest) => {
@@ -119,9 +124,21 @@ export function registerAiIpc(): void {
     try {
       await streamForProvider(provider, config, system, messages, tools, maxTokens, {
         signal: controller.signal,
+        requestId,
         onDelta: (text) => send({ requestId, type: 'delta', text }),
         onToolCall: (toolCall) => send({ requestId, type: 'tool-call', toolCall }),
         onActivity: ping,
+        ...(provider === 'local' || provider === 'custom'
+          ? {
+              onQueue: (info: { waiting: number; position: number | null }) =>
+                send({
+                  requestId,
+                  type: 'queue' as const,
+                  queueWaiting: info.waiting,
+                  ...(typeof info.position === 'number' ? { queuePosition: info.position } : {}),
+                }),
+            }
+          : {}),
       })
       send({ requestId, type: 'done' })
     } catch (err) {
@@ -174,7 +191,7 @@ export function registerAiIpc(): void {
 // never called; docs does not have these channels, so putting them in the wrong place raises
 // "No handler registered".
 export function registerSlidesOnlyAiIpc(): void {
-  // gsk (Genspark CLI) capabilities: AI image generation / media analysis. Returns an error prompt when not logged in.
+  // gsk (ArkOffice CLI) capabilities: AI image generation / media analysis. Returns an error prompt when not logged in.
   ipcMain.handle(
     'ai:generate-image',
     async (
@@ -187,6 +204,12 @@ export function registerSlidesOnlyAiIpc(): void {
         imageSize?: string
       },
     ) => {
+      if (!isCloudFeaturesEnabled()) {
+        return {
+          error:
+            'Cloud features are off. Enable them in Settings (sidebar) to use AI image generation.',
+        }
+      }
       if (!hasGskAuth()) return { error: tm('errGskCli') }
       try {
         const r = await gskGenerateImage({
@@ -208,6 +231,12 @@ export function registerSlidesOnlyAiIpc(): void {
   ipcMain.handle(
     'ai:analyze-media',
     async (_event, op: { mediaUrls: string[]; requirements: string }) => {
+      if (!isCloudFeaturesEnabled()) {
+        return {
+          error:
+            'Cloud features are off. Enable them in Settings (sidebar) to use media analysis.',
+        }
+      }
       if (!hasGskAuth()) return { error: tm('errGskCli') }
       try {
         const text = await gskAnalyzeMedia({

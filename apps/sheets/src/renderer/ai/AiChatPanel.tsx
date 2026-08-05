@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { AiComposer, AiTypingIndicator } from '@arkoffice/ui'
-import { GensparkMark } from '../ribbon-icons'
+import { ArkOfficeMark } from '../ribbon-icons'
 import type { ChangePlan } from '../../domain/workbook.types'
 import type { AttachmentMeta } from '../../shared/desktop-api'
 import { useI18n, type TFunc } from '../i18n/locale'
@@ -51,10 +51,12 @@ export interface AiChatMessage {
   readonly isError?: boolean | undefined
   /** the run failed and this user message was rolled back out of the model context */
   readonly undelivered?: boolean | undefined
-  /** the run failed because Genspark is signed out — render an inline sign-in button */
+  /** the run failed because ArkOffice is signed out — render an inline sign-in button */
   readonly loginRequired?: boolean | undefined
   /** Set when this message reflects an auto-applied plan; renders an inline [Undo] button. */
   readonly autoApplied?: { readonly opCount: number } | undefined
+  /** local LLM FIFO: 1-based place in line */
+  readonly queuePosition?: number | null | undefined
 }
 
 export function AiChatPanel({
@@ -200,7 +202,7 @@ export function AiChatPanel({
     return (
       <aside className="copilot collapsed">
         <button className="expand-copilot" onClick={onExpand} title={t('aiOpenAssistant')}>
-          <GensparkMark size={22} />
+          <ArkOfficeMark size={22} />
         </button>
       </aside>
     )
@@ -261,12 +263,12 @@ export function AiChatPanel({
         onPointerDown={startResize}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Genspark"
+        aria-label="ArkOffice"
       />
       <header className="ai-panel-header">
         <span className="ai-panel-title">
-          <GensparkMark size={22} />
-          Genspark
+          <ArkOfficeMark size={22} />
+          ArkOffice
         </span>
         <div className="ai-panel-header-actions">
           {(chat.length > 0 || historicChat.length > 0) && (
@@ -331,7 +333,13 @@ export function AiChatPanel({
                   entry.streaming && (
                     <span className="ai-typing-row">
                       <AiTypingIndicator
-                        label={entry.tools.length > 0 ? t('aiWorking') : t('aiThinking')}
+                        label={
+                          entry.queuePosition != null && entry.queuePosition > 0
+                            ? t('aiQueueWaiting', { n: String(entry.queuePosition) })
+                            : entry.tools.length > 0
+                              ? t('aiWorking')
+                              : t('aiThinking')
+                        }
                       />
                     </span>
                   )

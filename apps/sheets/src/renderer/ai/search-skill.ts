@@ -4,32 +4,35 @@ import { t } from '../i18n/locale'
 /**
  * Web-search AgentSkill (same source as docs/slides web_search):
  * the main process queries Serper/DuckDuckGo; the renderer only receives
- * titles/links/snippets.
+ * titles/links/snippets. Tools are omitted when cloud features are off.
  */
 
 const SEARCH_SYSTEM_PROMPT = `## Web search
-- When you need up-to-date information, data, or facts beyond the workbook, use web_search; never fabricate numbers from memory.
+- When you need up-to-date information, data, or facts beyond the workbook and web_search is available, use it; never fabricate numbers from memory.
+- If web_search is unavailable (cloud features off / air-gapped), do not invent live facts — use the workbook/user content only, or mark any illustrative figures as sample data.
 - When writing search results into the workbook, you must attribute the data source (load_guide: data-attribution first).`
 
-export function createSearchSkill(): AgentSkill {
+const WEB_SEARCH_TOOL = {
+  name: 'web_search',
+  description:
+    'Search the web for textual information (references/data/facts). Use when you need up-to-date information or are unsure about a fact. Returns titles/links/snippets.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search keywords' },
+      maxResults: { type: 'integer', description: 'Maximum number of results, default 6' },
+    },
+    required: ['query'],
+  },
+}
+
+export function createSearchSkill(cloudFeaturesEnabled: () => boolean = () => false): AgentSkill {
   return {
     id: 'search',
     systemPrompt: SEARCH_SYSTEM_PROMPT,
-    tools: [
-      {
-        name: 'web_search',
-        description:
-          'Search the web for textual information (references/data/facts). Use when you need up-to-date information or are unsure about a fact. Returns titles/links/snippets.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search keywords' },
-            maxResults: { type: 'integer', description: 'Maximum number of results, default 6' },
-          },
-          required: ['query'],
-        },
-      },
-    ],
+    get tools() {
+      return cloudFeaturesEnabled() ? [WEB_SEARCH_TOOL] : []
+    },
     executeTool: async (call) => {
       if (call.name !== 'web_search') {
         return { output: `Unknown tool: ${call.name}`, isError: true, summary: call.name }
@@ -39,6 +42,21 @@ export function createSearchSkill(): AgentSkill {
         return { output: 'query must not be empty', isError: true, summary: t('aiToolWebSearch') }
       }
       const r = await window.desktopApi.webSearch(query, Number(call.input.maxResults) || 6)
+      if (r.method === 'disabled') {
+        return {
+          output:
+            'Web search is disabled. Enable Cloud features in Settings (sidebar), or set ARKOFFICE_ALLOW_WEB_SEARCH=1. Continue with workbook/user content only; do not invent live web facts.',
+          isError: true,
+          summary: t('aiToolWebSearch'),
+        }
+      }
+      if (r.method === 'error') {
+        return {
+          output: `web search failed (service error, not an empty result — you may retry): ${r.error ?? 'unknown error'}`,
+          isError: true,
+          summary: t('aiToolWebSearch'),
+        }
+      }
       const lines: string[] = []
       if (r.answer) lines.push(`Direct answer: ${r.answer}\n`)
       r.results.forEach((it, i) =>

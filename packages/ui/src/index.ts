@@ -1,4 +1,5 @@
 export { AiComposer } from './AiComposer'
 export { AiTypingIndicator } from './AiTypingIndicator'
+export { ArkOfficeMark, type ArkOfficeMarkProps } from './ArkOfficeMark'
 export { IconSend, IconStop, type IconProps } from './icons'
 export { Markdown } from './Markdown'

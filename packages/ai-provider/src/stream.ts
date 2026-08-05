@@ -1,5 +1,6 @@
 import type { AgentMessage, AgentToolCall, AgentToolDef } from '@arkoffice/agent-core'
 import { httpBodyDetail } from './http-error'
+import { startLlmQueuePoll } from './queue-status'
 import type { AiProviderConfig, AiProviderId } from './types'
 import { createStreamWatchdog, type StreamWatchdog } from './watchdog'
 
@@ -32,6 +33,10 @@ export interface StreamCallbacks {
   onStopReason?: (reason: string) => void
   /** bytes arrived on the wire (fires per network chunk, including SSE pings; used for keepalive) */
   onActivity?: () => void
+  /** local LLM queue proxy status while waiting for a slot / first headers */
+  onQueue?: (info: { waiting: number; position: number | null }) => void
+  /** correlates with X-ArkOffice-Request-Id / /arkoffice/queue?id= */
+  requestId?: string
   signal: AbortSignal
 }
 
@@ -92,7 +97,7 @@ function sseErrorText(error: unknown, fallback: string): string {
 
 /**
  * Gateways can answer a `stream: true` request with a complete non-SSE JSON body —
- * observed on the Genspark Anthropic route when credits are exhausted (HTTP 200,
+ * observed on the ArkOffice Anthropic route when credits are exhausted (HTTP 200,
  * Content-Type: application/json, the notice text inside a regular message). The SSE
  * parser would find no `data:` lines in such a body and dissolve it into an empty
  * "successful" turn. Returns the body text when that happens, else null.
@@ -104,7 +109,7 @@ async function jsonBodyInsteadOfSse(response: Response): Promise<string | null> 
 
 /**
  * A non-SSE JSON reply whose text is the gateway's credits-exhausted notice
- * (Genspark: "Your Genspark credits have been exhausted…") surfaces as a typed
+ * (ArkOffice: "Your ArkOffice credits have been exhausted…") surfaces as a typed
  * error so the apps show a localized "top up" message (errorCode 'credits')
  * instead of the English notice as a normal assistant reply.
  */
@@ -689,29 +694,44 @@ async function openAiCompatibleTurn(
     wd.touch()
     cb.onActivity?.()
   }
-  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    signal: wd.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      max_tokens: maxTokens,
-      messages: openAiMessages(system, messages),
-      ...(tools.length > 0
-        ? {
-            tools: tools.map((t) => ({
-              type: 'function',
-              function: { name: t.name, description: t.description, parameters: t.inputSchema },
-            })),
-          }
-        : {}),
-      temperature: 0.3,
-      stream: true,
-    }),
-  })
+  const queuePoll = cb.onQueue
+      ? startLlmQueuePoll({
+          baseUrl,
+          requestId: cb.requestId,
+          signal: wd.signal,
+          onQueue: (info) => cb.onQueue?.(info),
+          onActivity: () => cb.onActivity?.(),
+        })
+      : null
+  let response: Response
+  try {
+    response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      signal: wd.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+        ...(cb.requestId ? { 'X-ArkOffice-Request-Id': cb.requestId } : {}),
+      },
+      body: JSON.stringify({
+        model: config.model,
+        max_tokens: maxTokens,
+        messages: openAiMessages(system, messages),
+        ...(tools.length > 0
+          ? {
+              tools: tools.map((t) => ({
+                type: 'function',
+                function: { name: t.name, description: t.description, parameters: t.inputSchema },
+              })),
+            }
+          : {}),
+        temperature: 0.3,
+        stream: true,
+      }),
+    })
+  } finally {
+    queuePoll?.stop()
+  }
   // headers arrived: ping the renderer watchdog too, or a slow first chunk could trip it
   onBytes()
   if (!response.ok || !response.body) {

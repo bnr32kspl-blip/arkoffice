@@ -13,7 +13,7 @@ import type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
 
 export type { SlideComment, SectionInfo } from '@arkoffice/pptx-engine'
@@ -26,9 +26,9 @@ export type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
-export { AI_PROVIDERS } from '@arkoffice/ai-provider'
+export { AI_PROVIDERS, defaultAiSettings } from '@arkoffice/ai-provider'
 export type { AgentToolCall, AgentToolDef } from '@arkoffice/agent-core'
 
 export interface OpenResult {
@@ -987,6 +987,9 @@ export interface SlidesApi {
       lang: 'zh' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'th' | 'id' | 'ru' | 'ar',
     ) => void,
   ) => () => void
+  /** optional online features opt-in (default off; local-first) */
+  cloudFeaturesEnabled: () => Promise<boolean>
+  onCloudFeaturesChanged: (handler: (enabled: boolean) => void) => () => void
   openPptx: (fitWidthPx: number) => Promise<OpenResult | null>
   openPptxPath: (path: string, fitWidthPx: number) => Promise<OpenResult | null>
   consumePendingOpen: (fitWidthPx: number) => Promise<OpenResult | null>
@@ -1285,9 +1288,9 @@ export interface SlidesApi {
   setAiSettings: (settings: AiSettings) => Promise<void>
   aiStream: (request: AiStreamRequest) => Promise<void>
   aiStreamCancel: (requestId: string) => Promise<void>
-  /** Genspark account status (gsk login state); with withEmail also fetches the email (needs a network request, slower) */
-  aiGskStatus: (withEmail?: boolean) => Promise<GenSparkAccountStatus>
-  /** Open the browser to log into Genspark (fire-and-forget; aiGskStatus turns logged-in once done) */
+  /** Account status (gsk login state); with withEmail also fetches the email (needs a network request, slower) */
+  aiGskStatus: (withEmail?: boolean) => Promise<ToolCliAccountStatus>
+  /** Open the browser to log into ArkOffice (fire-and-forget; aiGskStatus turns logged-in once done) */
   aiGskLogin: () => Promise<void>
   webSearch: (
     query: string,
@@ -1320,7 +1323,7 @@ export interface SlidesApi {
     hPx: number
     fitWidthPx: number
   }) => Promise<{ slide: RenderSlide; sourceId: string } | null>
-  /** gsk (Genspark) AI image generation/editing, returns the image URL (error prompts login when logged out) */
+  /** gsk (ArkOffice) AI image generation/editing, returns the image URL (error prompts login when logged out) */
   generateImage: (op: {
     prompt: string
     model?: string
@@ -1328,7 +1331,7 @@ export interface SlidesApi {
     aspectRatio?: string
     imageSize?: string
   }) => Promise<{ url?: string; error?: string }>
-  /** gsk (Genspark) media analysis: image/audio/video content understanding, returns analysis text */
+  /** gsk (ArkOffice) media analysis: image/audio/video content understanding, returns analysis text */
   analyzeMedia: (op: {
     mediaUrls: string[]
     requirements: string

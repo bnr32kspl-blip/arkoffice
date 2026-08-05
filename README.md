@@ -162,12 +162,19 @@ npm run check:airgap
 - [閉域網・制限ネットワーク向け展開手順](docs/air-gapped-deployment.md)
 - [ネットワーク許可リスト](docs/network-allowlist.md)
 - [閉域網向け検証チェックリスト](docs/verification-checklist.md)
+- [ローカル LLM ランタイム仕様](docs/local-llm-runtime.md)
 - [セキュリティポリシー](SECURITY.md)
 
-ローカル LLM（例）:
+ローカル LLM（推奨・同梱ランタイム）:
+
+1. `apps/shell/vendor/llm/` に `llama-server-{cuda,vulkan,cpu}.exe` を配置してから `npm run dist:win`
+2. GGUF を `%ProgramData%\ArkOffice\models` に配置
+3. 初回ウィザードで「この PC で推論」を選択
+
+外部サーバのみ使う場合:
 
 ```bash
-llama-server -m model.gguf --port 8080
+llama-server -m model.gguf --host 127.0.0.1 --port 8080 -np 1
 # ArkOffice Settings → Local (llama.cpp) → Base URL http://127.0.0.1:8080/v1 + model id
 ```
 
@@ -194,4 +201,4 @@ npm run typecheck
 npm run dev
 ```
 
-Sheets の xlsx sidecar には Rust ツールチェーンが必要です。ローカル LLM には別途 llama.cpp（`llama-server`）または互換ランタイムが必要です。
+Sheets の xlsx sidecar には Rust ツールチェーンが必要です。ローカル LLM の同梱バイナリは `apps/shell/vendor/llm/` に配置してください（未配置でもアプリは起動しますがローカル推論は使えません）。

@@ -95,6 +95,8 @@ export interface AgentStreamCallbacks {
   onToolCall(call: AgentToolCall): void
   /** Phase changes within the model stream (thinking / responding / tool-input); older transports may omit this */
   onPhase?(phase: AgentPhase): void
+  /** local LLM FIFO wait status (waiting count / position in line) */
+  onQueue?(info: { waiting: number; position: number | null }): void
   /** normalized stop reason of the turn ('max_tokens' = cut off by the token limit); transports may omit this */
   onStopReason?(reason: string): void
   onDone(): void

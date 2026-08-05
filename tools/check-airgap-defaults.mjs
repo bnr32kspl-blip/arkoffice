@@ -39,8 +39,8 @@ for (const script of ['tools/check-no-ee.mjs', 'tools/check-trademarks.mjs']) {
 
 // 2) Default AI provider is local with localhost base URL
 const providersSrc = read('packages/ai-provider/src/providers.ts')
-if (!/return \{ provider: 'local', providers \}/.test(providersSrc)) {
-  fail("defaultAiSettings must return provider: 'local'")
+if (!/provider: 'local'/.test(providersSrc) || !providersSrc.includes('runtimeMode: \'local\'')) {
+  fail("defaultAiSettings must default to provider/runtimeMode 'local'")
 } else {
   ok("default AI provider is 'local'")
 }
@@ -80,9 +80,14 @@ for (const rel of [
   'docs/air-gapped-deployment.md',
   'docs/network-allowlist.md',
   'docs/verification-checklist.md',
+  'docs/local-llm-runtime.md',
   'docs/examples/ai-settings.local.example.json',
+  'docs/examples/ai-settings.remote.example.json',
+  'docs/examples/ai-settings.listen-lan.example.json',
   'docs/examples/update-preferences.disabled.json',
   'docs/examples/README.md',
+  'apps/shell/vendor/llm/README.md',
+  'apps/shell/electron-builder.cjs',
 ]) {
   if (!existsSync(join(root, rel))) fail(`missing ${rel}`)
   else ok(`present ${rel}`)
@@ -92,6 +97,54 @@ for (const rel of [
 const pref = JSON.parse(read('docs/examples/update-preferences.disabled.json'))
 if (pref.enabled !== false) fail('update-preferences example must set enabled:false')
 else ok('update-preferences example is disabled')
+
+// 7) Local LLM packaging + runtime invariants (source-level)
+const builderSrc = read('apps/shell/electron-builder.cjs')
+if (!builderSrc.includes('optionalLlmResources') || !builderSrc.includes("to: 'llm'")) {
+  fail('electron-builder.cjs must optionally bundle vendor/llm → resources/llm')
+} else {
+  ok('electron-builder optionally bundles vendor/llm')
+}
+
+const runtimeSrc = read('apps/shell/src/main/llm-runtime.ts')
+if (!runtimeSrc.includes("'-np'") || !runtimeSrc.includes("'1'")) {
+  fail('llm-runtime must start llama-server with -np 1')
+} else {
+  ok('llm-runtime uses -np 1')
+}
+if (!runtimeSrc.includes('createLlmQueueProxy') || !runtimeSrc.includes('resolveUpstreamPort')) {
+  fail('llm-runtime must start the queue proxy in front of llama-server')
+} else {
+  ok('llm-runtime wires queue proxy')
+}
+
+const backendSrc = read('apps/shell/src/main/llm-backend.ts')
+if (
+  !backendSrc.includes("LLM_LOOPBACK_HOST = '127.0.0.1'") ||
+  !backendSrc.includes("LLM_LAN_BIND_HOST = '0.0.0.0'") ||
+  !backendSrc.includes('resolveListenHost')
+) {
+  fail('llm-backend must default to loopback and allow 0.0.0.0 on listenLan')
+} else {
+  ok('llm listen host defaults to loopback with LAN opt-in')
+}
+
+const watchdogSrc = read('packages/ai-provider/src/watchdog.ts')
+if (
+  !watchdogSrc.includes('AI_CONNECT_TIMEOUT_MS = 60_000') ||
+  !watchdogSrc.includes('AI_IDLE_TIMEOUT_MS = 60_000') ||
+  !watchdogSrc.includes('AI_CHAT_RESPONSE_TIMEOUT_MS = 180_000')
+) {
+  fail('AI timeouts must remain 60s connect / 60s idle / 180s chat (AC-10)')
+} else {
+  ok('AI timeouts unchanged (AC-10)')
+}
+
+const checklist = read('docs/verification-checklist.md')
+for (const ac of ['AC-1', 'AC-6', 'AC-7', 'AC-11']) {
+  if (!checklist.includes(ac)) fail(`verification-checklist.md must cover ${ac}`)
+}
+ok('verification-checklist covers local LLM acceptance IDs')
 
 if (failed) {
   console.error('\nAir-gap defaults check failed.')

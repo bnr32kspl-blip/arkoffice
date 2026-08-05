@@ -69,6 +69,14 @@ npm run dist:mac   # dmg + zip
 npm run dist:win   # nsis installer
 ```
 
+On Windows you can also double-click / run from a prompt:
+
+```bat
+dist-win.bat
+```
+
+This stages the xlsx sidecar, checks `apps/shell/vendor/llm` for the three `llama-server-*.exe` (and warns if `cudart64_*.dll` is missing), then runs `npm run dist:win`. The installer lands under `apps/shell/release/`.
+
 Without Apple or Windows signing credentials in the environment these produce
 unsigned artifacts: code signing and notarization are skipped with a warning
 rather than failing. That is the expected result for a contributor build.
@@ -99,7 +107,7 @@ testing and local overrides:
 | `ARKOFFICE_AUTO_UPDATE`                                    | Set to `1` to enable background update checks (off by default)         |
 | `ARKOFFICE_UPDATE_URL`                                     | Update feed URL baked into release builds (optional)                   |
 | `SERPER_API_KEY`                                         | Optional Serper key when web search is explicitly enabled              |
-| `GSK_API_KEY`, `GSK_CLI_PATH`                            | Optional legacy Genspark CLI (not required for local LLM)              |
+| `GSK_API_KEY`, `GSK_CLI_PATH`                            | Optional legacy tool CLI (not required for local LLM)                  |
 | `XLSX_SIDECAR_PATH`, `XLSX_OPEN_PATH`, `XLSX_DEBUG_PORT` | Point at a locally built xlsx sidecar and its debug port               |
 | `*_DEV_PORT`, `*_RENDERER_URL`                           | Per-app Vite dev server ports and renderer URLs (set by `npm run dev`) |
 

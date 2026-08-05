@@ -6,7 +6,7 @@ import type {
   AiSettings,
   AiStreamChunk,
   AiStreamRequest,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
 
 const MAX_RANGE_CELLS = 20_000
@@ -1692,6 +1692,14 @@ export const aiSettingsInputSchema = z
   .object({
     provider: z.string().min(1),
     providers: z.record(z.string(), aiProviderConfigSchema),
+    runtimeMode: z.enum(['local', 'remote']).optional(),
+    remoteBaseUrl: z.string().optional(),
+    listenLan: z.boolean().optional(),
+    backend: z.enum(['auto', 'cuda', 'vulkan', 'cpu']).optional(),
+    modelsDir: z.string().nullable().optional(),
+    selectedModelFile: z.string().nullable().optional(),
+    port: z.number().int().positive().max(65535).optional(),
+    llmRuntimeConfigured: z.boolean().optional(),
   })
   .strict()
 
@@ -1861,6 +1869,9 @@ export interface DesktopApi {
       lang: 'zh' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'th' | 'id' | 'ru' | 'ar',
     ) => void,
   ): () => void
+  /** optional online features opt-in (default off; local-first) */
+  cloudFeaturesEnabled(): Promise<boolean>
+  onCloudFeaturesChanged(handler: (enabled: boolean) => void): () => void
   selectWorkbook(): Promise<WorkbookFile | null>
   readWorkbookRange(request: WorkbookRangeRequest): Promise<WorkbookRangeResult>
   readWorkbookFormulas(request: WorkbookFormulaCellsRequest): Promise<WorkbookFormulaCellsResult>
@@ -1900,10 +1911,10 @@ export interface DesktopApi {
   /// start a streaming AI call; deltas arrive via onAiStream with the same requestId
   aiStream(request: AiStreamRequest): Promise<void>
   aiStreamCancel(requestId: string): Promise<void>
-  /// Genspark account status (gsk login state); withEmail also returns the email
+  /// Account status (gsk login state); withEmail also returns the email
   /// (needs a network request, slower)
-  aiGskStatus(withEmail?: boolean): Promise<GenSparkAccountStatus>
-  /// Opens the browser to sign in to Genspark (fire-and-forget; aiGskStatus
+  aiGskStatus(withEmail?: boolean): Promise<ToolCliAccountStatus>
+  /// Opens the browser to sign in (fire-and-forget; aiGskStatus
   /// becomes signed-in on completion)
   aiGskLogin(): Promise<void>
   /// Web search (main-process Serper/DuckDuckGo, shared with docs/slides)

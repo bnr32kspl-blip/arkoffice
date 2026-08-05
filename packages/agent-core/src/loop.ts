@@ -37,6 +37,8 @@ export interface AgentLoopEvents<TSnapshot> {
   onToolExecuted?(event: ToolExecutedEvent<TSnapshot>): void
   /** a turn requested tools and they ran; the loop is going back to the model */
   onTurnEnd?(): void
+  /** local LLM FIFO wait status while the turn is queued */
+  onQueue?(info: { waiting: number; position: number | null }): void
   onDone?(result: AgentRunResult): void
   onError?(error: string): void
 }
@@ -468,6 +470,10 @@ export class AgentLoop<TSnapshot = unknown> {
         onToolCall: (call) => {
           if (generation !== this.generation || settled) return
           this.toolCalls.push(call)
+        },
+        onQueue: (info) => {
+          if (generation !== this.generation || settled) return
+          this.options.events?.onQueue?.(info)
         },
         onStopReason: (reason) => {
           if (generation !== this.generation || settled) return

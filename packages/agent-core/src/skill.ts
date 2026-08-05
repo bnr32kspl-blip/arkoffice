@@ -26,26 +26,36 @@ export interface AgentSkill {
 /**
  * Merge several skills into one (tool names must be globally unique).
  * `intro` becomes the shared preamble of the combined system prompt.
+ * `tools` is read live each turn so opt-in cloud tools can appear/disappear.
  */
 export function composeSkills(id: string, intro: string, skills: AgentSkill[]): AgentSkill {
-  const owner = new Map<string, AgentSkill>()
+  const resolveOwner = (name: string): AgentSkill | undefined => {
+    for (const skill of skills) {
+      if (skill.tools.some((tool) => tool.name === name)) return skill
+    }
+    return undefined
+  }
+  // Fail fast on static duplicates across skills that always expose the same tools.
+  const seen = new Set<string>()
   for (const skill of skills) {
     for (const tool of skill.tools) {
-      if (owner.has(tool.name)) throw new Error(`duplicate tool name: ${tool.name}`)
-      owner.set(tool.name, skill)
+      if (seen.has(tool.name)) throw new Error(`duplicate tool name: ${tool.name}`)
+      seen.add(tool.name)
     }
   }
   return {
     id,
     systemPrompt: [intro, ...skills.map((s) => s.systemPrompt)].filter(Boolean).join('\n\n'),
-    tools: skills.flatMap((s) => s.tools),
+    get tools() {
+      return skills.flatMap((s) => s.tools)
+    },
     buildContext: () =>
       skills
         .map((s) => s.buildContext?.() ?? '')
         .filter(Boolean)
         .join('\n\n'),
     executeTool: (call, signal) => {
-      const skill = owner.get(call.name)
+      const skill = resolveOwner(call.name)
       if (!skill) {
         return { output: `Unknown tool: ${call.name}`, isError: true, summary: call.name }
       }

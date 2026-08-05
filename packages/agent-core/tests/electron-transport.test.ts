@@ -97,6 +97,44 @@ describe('createIpcTransport', () => {
     expect(cancelled).toEqual([started[0]!.requestId])
   })
 
+  it('forwards queue chunks to onQueue and re-arms the silence watchdog', () => {
+    vi.useFakeTimers()
+    try {
+      let listener: ((chunk: IpcStreamChunk) => void) | undefined
+      const started: IpcStreamStart<FakeSettings>[] = []
+      const transport = createIpcTransport<FakeSettings>({
+        onStream: (l) => {
+          listener = l
+          return () => {
+            listener = undefined
+          }
+        },
+        start: (request) => {
+          started.push(request)
+        },
+        cancel: () => {},
+        getSettings: () => ({ provider: 'local' }),
+        unknownErrorText: () => 'unknown error',
+        timeoutErrorText: () => 'timed out',
+      })
+      const cb = {
+        onDelta: vi.fn(),
+        onToolCall: vi.fn(),
+        onQueue: vi.fn(),
+        onDone: vi.fn(),
+        onError: vi.fn(),
+      }
+      transport.stream({ system: 'sys', messages: [], tools: [] }, cb)
+      const requestId = started[0]!.requestId
+      listener?.({ requestId, type: 'queue', queueWaiting: 2, queuePosition: 1 })
+      expect(cb.onQueue).toHaveBeenCalledWith({ waiting: 2, position: 1 })
+      vi.advanceTimersByTime(IPC_STREAM_SILENCE_TIMEOUT_MS - 1)
+      expect(cb.onError).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('maps a timeout error code to the localized timeout message', () => {
     const { cb, emit } = setup()
     emit({ type: 'error', error: 'AI request timed out: no data received', errorCode: 'timeout' })
@@ -107,7 +145,7 @@ describe('createIpcTransport', () => {
     const { cb, emit } = setup(undefined, () => 'credits used up')
     emit({
       type: 'error',
-      error: 'Your Genspark credits have been exhausted.',
+      error: 'Your ArkOffice credits have been exhausted.',
       errorCode: 'credits',
     })
     expect(cb.onError).toHaveBeenCalledWith('credits used up')
@@ -117,10 +155,10 @@ describe('createIpcTransport', () => {
     const { cb, emit } = setup()
     emit({
       type: 'error',
-      error: 'Your Genspark credits have been exhausted.',
+      error: 'Your ArkOffice credits have been exhausted.',
       errorCode: 'credits',
     })
-    expect(cb.onError).toHaveBeenCalledWith('Your Genspark credits have been exhausted.')
+    expect(cb.onError).toHaveBeenCalledWith('Your ArkOffice credits have been exhausted.')
   })
 
   it('fails the run after prolonged silence; pings re-arm the watchdog', () => {

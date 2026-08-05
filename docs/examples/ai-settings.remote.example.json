@@ -1,0 +1,23 @@
+{
+  "provider": "local",
+  "runtimeMode": "remote",
+  "remoteBaseUrl": "http://192.168.10.20:8080/v1",
+  "listenLan": false,
+  "backend": "auto",
+  "modelsDir": null,
+  "selectedModelFile": null,
+  "port": 8080,
+  "llmRuntimeConfigured": true,
+  "providers": {
+    "local": {
+      "apiKey": "",
+      "model": "REPLACE_WITH_MODEL_ID",
+      "baseUrl": "http://192.168.10.20:8080/v1"
+    },
+    "openai": { "apiKey": "", "model": "gpt-4.1-mini" },
+    "anthropic": { "apiKey": "", "model": "claude-opus-4-7" },
+    "gemini": { "apiKey": "", "model": "gemini-2.5-flash" },
+    "deepseek": { "apiKey": "", "model": "deepseek-chat" },
+    "custom": { "apiKey": "", "model": "", "baseUrl": "" }
+  }
+}

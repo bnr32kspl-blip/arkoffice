@@ -6,14 +6,9 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Editor } from '@tiptap/core'
 import { editorExtensions } from '../src/renderer/editor/extensions'
 import { AiPanel } from '../src/renderer/ai/AiPanel'
-import { AI_PROVIDERS, type AiSettings } from '../src/shared/ipc'
+import { AI_PROVIDERS, defaultAiSettings, type AiSettings } from '../src/shared/ipc'
 
-const settings: AiSettings = {
-  provider: 'anthropic',
-  providers: Object.fromEntries(
-    AI_PROVIDERS.map((p) => [p.id, { apiKey: '', model: p.defaultModel }]),
-  ) as AiSettings['providers'],
-}
+const settings: AiSettings = { ...defaultAiSettings(), provider: 'anthropic' }
 
 function createEditor(): Editor {
   return new Editor({

@@ -15,7 +15,7 @@ import { createElectronTransport } from './transport'
 import { useI18n, t as tModule, aiLangDirective, type StringKey } from '../i18n/locale'
 import { Markdown } from '@arkoffice/ui'
 import { AiComposer, AiTypingIndicator } from '@arkoffice/ui'
-import { GensparkMark } from '../components/icons'
+import { ArkOfficeMark } from '../components/icons'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
@@ -68,10 +68,12 @@ interface ChatEntry {
   turnLimit?: boolean
   /** the run failed and this user message was rolled back out of the model context */
   undelivered?: boolean
-  /** the run failed because Genspark is signed out — render an inline sign-in button */
+  /** the run failed because the AI provider is signed out — render an inline sign-in button */
   loginRequired?: boolean
   /** tool executions performed during this assistant turn */
   tools?: ToolActivity[]
+  /** local LLM FIFO: 1-based place in line (0 = serving); omit when not queued */
+  queuePosition?: number | null
 }
 
 /** clickable starter prompts for the empty state (fill the input, do not send) —
@@ -207,6 +209,21 @@ export function AiPanel({
   attachmentsRef.current = attachments
   const trackChangesRef = useRef(trackChanges)
   trackChangesRef.current = trackChanges
+  const cloudFeaturesRef = useRef(false)
+
+  useEffect(() => {
+    let alive = true
+    void window.desktop.cloudFeaturesEnabled?.().then((on) => {
+      if (alive) cloudFeaturesRef.current = on
+    })
+    const unsub = window.desktop.onCloudFeaturesChanged?.((on) => {
+      cloudFeaturesRef.current = on
+    })
+    return () => {
+      alive = false
+      unsub?.()
+    }
+  }, [])
 
   /** drop every aiChanged flag; silent = skip undo history (auto-accept path) */
   const clearAiHighlights = (silent = false) => {
@@ -350,12 +367,22 @@ export function AiPanel({
           () => editorRef.current,
           numIds,
           () => (trackChangesRef.current ? { author: AI_REVISION_AUTHOR } : undefined),
+          () => cloudFeaturesRef.current,
         ),
         createFilesSkill(() => attachmentsRef.current),
       ]),
       captureSnapshot: () => editorRef.current.getJSON() as PmNode,
       events: {
-        onText: (text) => patchLastAssistant({ text }),
+        onText: (text) => patchLastAssistant({ text, queuePosition: null }),
+        onQueue: (info) => {
+          if (info.position !== null && info.position > 0) {
+            patchLastAssistant({ queuePosition: info.position })
+          } else if (info.waiting > 0) {
+            patchLastAssistant({ queuePosition: info.waiting })
+          } else {
+            patchLastAssistant({ queuePosition: null })
+          }
+        },
         onToolStart: (call) => {
           // Live "running" chip: replaced in place by onToolExecuted
           patchLastAssistant((last) => ({
@@ -679,7 +706,7 @@ export function AiPanel({
   if (!open) {
     return (
       <button className="ai-rail" title={t('appExpandAiPanel')} onClick={onExpand}>
-        <GensparkMark size={22} />
+        <ArkOfficeMark size={22} />
       </button>
     )
   }
@@ -710,7 +737,7 @@ export function AiPanel({
       />
       <div className="ai-panel-header">
         <span className="ai-panel-title">
-          <GensparkMark size={22} />
+          <ArkOfficeMark size={22} />
           {t('aiPanelTitle')}
         </span>
         <div className="ai-panel-header-actions">
@@ -794,7 +821,13 @@ export function AiPanel({
               {entry.role === 'assistant' && !entry.text && entry.streaming ? (
                 <span className="ai-typing-row">
                   <AiTypingIndicator
-                    label={entry.tools?.length ? t('aiWorking') : t('aiThinking')}
+                    label={
+                      entry.queuePosition != null && entry.queuePosition > 0
+                        ? t('aiQueueWaiting', { n: String(entry.queuePosition) })
+                        : entry.tools?.length
+                          ? t('aiWorking')
+                          : t('aiThinking')
+                    }
                   />
                 </span>
               ) : entry.role === 'assistant' ? (

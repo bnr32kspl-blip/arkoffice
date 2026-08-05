@@ -4,7 +4,7 @@ import type {
   AiChatResponse,
   AiSettings,
   AiStreamChunk,
-  GenSparkAccountStatus,
+  ToolCliAccountStatus,
 } from '@arkoffice/ai-provider'
 import type { ProjectApi } from '@arkoffice/project-store'
 import type {
@@ -43,6 +43,13 @@ const desktopApi: DesktopApi = {
     ) => handler(lang)
     ipcRenderer.on('app:language-changed', listener)
     return () => ipcRenderer.removeListener('app:language-changed', listener)
+  },
+  cloudFeaturesEnabled: () => ipcRenderer.invoke('app:cloud-features-enabled'),
+  onCloudFeaturesChanged(handler) {
+    const listener = (_event: Electron.IpcRendererEvent, enabled: boolean) =>
+      handler(enabled === true)
+    ipcRenderer.on('app:cloud-features-changed', listener)
+    return () => ipcRenderer.removeListener('app:cloud-features-changed', listener)
   },
   async selectWorkbook() {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.selectWorkbook)
@@ -235,9 +242,9 @@ const desktopApi: DesktopApi = {
   async aiGskStatus(withEmail) {
     const result: unknown = await ipcRenderer.invoke(IPC_CHANNELS.aiGskStatus, withEmail)
     if (!isRecord(result) || typeof result.loggedIn !== 'boolean') {
-      throw new Error('Invalid Genspark account status response.')
+      throw new Error('Invalid Account status response.')
     }
-    return result as unknown as GenSparkAccountStatus
+    return result as unknown as ToolCliAccountStatus
   },
   async aiGskLogin() {
     await ipcRenderer.invoke(IPC_CHANNELS.aiGskLogin)

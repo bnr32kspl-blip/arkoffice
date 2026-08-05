@@ -87,9 +87,9 @@ export interface HomeApi {
   getLanguage(): Promise<UiLanguage>
   /** switch + persist the UI language; main rebuilds its menus to match */
   setLanguage(lang: UiLanguage): Promise<void>
-  /** Genspark account status (gsk login state; to be upgraded to a signup/account system later) */
+  /** Account status (gsk login state; to be upgraded to a signup/account system later) */
   accountStatus(): Promise<AccountStatus>
-  /** start Genspark login (opens the browser; accountStatus flips to logged-in on completion); returns whether the launch succeeded */
+  /** start ArkOffice login (opens the browser; accountStatus flips to logged-in on completion); returns whether the launch succeeded */
   accountLogin(): Promise<boolean>
   /** progress events for the login started via accountLogin; returns an unsubscribe */
   onAccountLogin(handler: (ev: AccountLoginEvent) => void): () => void
@@ -103,8 +103,28 @@ export interface HomeApi {
   onboardingSeen(): Promise<boolean>
   /** mark the first-run onboarding as done so it never shows again */
   setOnboardingSeen(): Promise<void>
-  /** open the GenTeam community page in the default browser */
-  openGenTeam(): Promise<void>
+  /** whether the LLM runtime first-run wizard has been completed or skipped */
+  llmRuntimeSeen(): Promise<boolean>
+  /** mark the LLM runtime wizard as done */
+  setLlmRuntimeSeen(): Promise<void>
+  /** whether optional cloud features are enabled (default off; local-first) */
+  cloudFeaturesEnabled(): Promise<boolean>
+  /** persist cloud features toggle and notify all windows */
+  setCloudFeaturesEnabled(enabled: boolean): Promise<void>
+  /** list GGUF models under the effective models directory (creates the dir if needed) */
+  listGgufModels(): Promise<import('./llm-models-api').GgufModelsSnapshot>
+  /** open the models directory in the OS file manager */
+  revealModelsDir(): Promise<boolean>
+  /** bundled llama-server status */
+  llmRuntimeStatus(): Promise<import('./llm-models-api').LlmRuntimeStatusDto>
+  /** start/stop llama-server to match current settings */
+  llmRuntimeEnsure(): Promise<import('./llm-models-api').LlmRuntimeStatusDto>
+  /** read shared AI settings (userData/ai-settings.json) */
+  getAiSettings(): Promise<import('@arkoffice/ai-provider').AiSettings>
+  /** write shared AI settings (normalized by main) */
+  setAiSettings(settings: import('@arkoffice/ai-provider').AiSettings): Promise<void>
+  /** open the Community community page in the default browser */
+  openCommunity(): Promise<void>
 }
 
 export interface AccountStatus {
@@ -194,7 +214,17 @@ export const HOME_CHANNELS = {
   getAppVersion: 'home:get-app-version',
   onboardingSeen: 'home:onboarding-seen',
   setOnboardingSeen: 'home:set-onboarding-seen',
-  openGenTeam: 'home:open-genteam',
+  llmRuntimeSeen: 'home:llm-runtime-seen',
+  setLlmRuntimeSeen: 'home:set-llm-runtime-seen',
+  cloudFeaturesEnabled: 'home:cloud-features-enabled',
+  setCloudFeaturesEnabled: 'home:set-cloud-features-enabled',
+  listGgufModels: 'home:list-gguf-models',
+  revealModelsDir: 'home:reveal-models-dir',
+  llmRuntimeStatus: 'home:llm-runtime-status',
+  llmRuntimeEnsure: 'home:llm-runtime-ensure',
+  getAiSettings: 'ai:get-settings',
+  setAiSettings: 'ai:set-settings',
+  openCommunity: 'home:open-community',
 } as const
 
 export const PROJECT_CHANNELS = {

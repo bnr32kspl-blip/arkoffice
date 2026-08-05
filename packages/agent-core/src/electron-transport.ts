@@ -14,7 +14,8 @@ import type {
 export interface IpcStreamChunk {
   requestId: string
   /** 'ping' = wire-level keepalive; re-arms the silence watchdog and carries no payload */
-  type: 'delta' | 'tool-call' | 'done' | 'error' | 'ping'
+  /** 'queue' = local LLM FIFO wait status */
+  type: 'delta' | 'tool-call' | 'done' | 'error' | 'ping' | 'queue'
   text?: string
   toolCall?: AgentToolCall
   error?: string
@@ -22,6 +23,8 @@ export interface IpcStreamChunk {
   errorCode?: 'timeout' | 'credits'
   /** normalized stop reason on 'done' ('max_tokens' = cut off by the token limit) */
   stopReason?: string
+  queueWaiting?: number
+  queuePosition?: number
 }
 
 /** The request forwarded to the main process to start one streaming turn. */
@@ -90,6 +93,12 @@ export function createIpcTransport<S>(options: IpcTransportOptions<S>): AgentTra
         if (chunk.requestId !== requestId || settled) return
         if (chunk.type === 'ping') {
           armSilence()
+        } else if (chunk.type === 'queue') {
+          armSilence()
+          cb.onQueue?.({
+            waiting: chunk.queueWaiting ?? 0,
+            position: typeof chunk.queuePosition === 'number' ? chunk.queuePosition : null,
+          })
         } else if (chunk.type === 'delta') {
           armSilence()
           cb.onDelta(chunk.text ?? '')

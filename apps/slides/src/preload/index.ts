@@ -87,6 +87,12 @@ const api: SlidesApi = {
     ipcRenderer.on('app:language-changed', listener)
     return () => ipcRenderer.removeListener('app:language-changed', listener)
   },
+  cloudFeaturesEnabled: () => ipcRenderer.invoke('app:cloud-features-enabled'),
+  onCloudFeaturesChanged: (handler) => {
+    const listener = (_event: IpcRendererEvent, enabled: boolean) => handler(enabled === true)
+    ipcRenderer.on('app:cloud-features-changed', listener)
+    return () => ipcRenderer.removeListener('app:cloud-features-changed', listener)
+  },
   openPptx: (fitWidthPx) => ipcRenderer.invoke('slides:open', fitWidthPx),
   openPptxPath: (path, fitWidthPx) => ipcRenderer.invoke('slides:open-path', path, fitWidthPx),
   consumePendingOpen: (fitWidthPx) => ipcRenderer.invoke('slides:consume-pending-open', fitWidthPx),

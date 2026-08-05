@@ -24,7 +24,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync } from 'node:fs'
 import { userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
-import { gskApiKey, gskSlideGenerate } from '@arkoffice/ai-search'
+import { gskApiKey, gskSlideGenerate, isCloudFeaturesEnabled } from '@arkoffice/ai-search'
+import { buildLocalSlidePptx } from './local-page-generate'
 import {
   appMenuLabels,
   contextMenuLabels,
@@ -1284,13 +1285,18 @@ export function registerSlidesIpc(): void {
     )
     return rebuildSlide(session, op.slideIndex)
   })
-  // ── Cloud single-page generation (gsk slide_generate): brief → cloud HTML+conversion → one-slide
-  // pptx saved to a temp file. Returns a marker string that flows through the same pagesHtml slots
-  // as locally generated HTML; slides:html-to-pptx recognizes it and reads the bytes instead of
-  // converting. Enabled when gsk is logged in; ARKOFFICE_CLOUD_SLIDE=0 is the kill switch.
-  const cloudSlideEnabled = () => process.env.ARKOFFICE_CLOUD_SLIDE !== '0' && !!gskApiKey()
+  // ── Page generation: prefer cloud (gsk) when signed in; otherwise build a local
+  // one-slide PPTX from the brief so air-gapped / local-LLM installs still work.
+  // ARKOFFICE_CLOUD_SLIDE=0 forces local-only. ARKOFFICE_CLOUD_SLIDE=force requires cloud.
+  const cloudSlideEnabled = () =>
+    isCloudFeaturesEnabled() && process.env.ARKOFFICE_CLOUD_SLIDE !== '0' && !!gskApiKey()
+  const pageGenEnabled = () =>
+    process.env.ARKOFFICE_CLOUD_SLIDE === 'force' ? cloudSlideEnabled() : true
 
-  ipcMain.handle('slides:cloud-gen-status', () => ({ enabled: cloudSlideEnabled() }))
+  ipcMain.handle('slides:cloud-gen-status', () => ({
+    enabled: pageGenEnabled(),
+    mode: cloudSlideEnabled() ? 'cloud' : 'local',
+  }))
 
   ipcMain.handle(
     'slides:cloud-page-generate',
@@ -1306,26 +1312,57 @@ export function registerSlidesIpc(): void {
         height?: number
       },
     ): Promise<{ ok: boolean; marker?: string; error?: string }> => {
-      if (!cloudSlideEnabled()) return { ok: false, error: 'cloud slide generation is disabled' }
+      if (!pageGenEnabled()) return { ok: false, error: 'slide page generation is disabled' }
+      const dir = join(app.getPath('temp'), 'arkoffice-cloud-pages')
+      mkdirSync(dir, { recursive: true })
       try {
-        // ultra = opus-class model, matching the local path's quality tier; ARKOFFICE_CLOUD_SLIDE_TIER=standard opts down
-        const tier = process.env.ARKOFFICE_CLOUD_SLIDE_TIER === 'standard' ? 'standard' : 'ultra'
-        const started = Date.now()
-        const { bytes, model } = await gskSlideGenerate({
-          tier,
-          brief: String(op.brief ?? ''),
-          title: op.title ? String(op.title) : undefined,
-          styleSkill: op.styleSkill ? String(op.styleSkill) : undefined,
-          deckContext: op.deckContext,
-          images: Array.isArray(op.images) ? op.images : undefined,
-          width: op.width,
-          height: op.height,
-        })
-        console.log(
-          `[cloud-slide] page generated: tier=${tier} model=${model} bytes=${bytes.length} ms=${Date.now() - started}`,
-        )
-        const dir = join(app.getPath('temp'), 'arkoffice-cloud-pages')
-        mkdirSync(dir, { recursive: true })
+        let bytes: Uint8Array
+        if (cloudSlideEnabled()) {
+          try {
+            const tier = process.env.ARKOFFICE_CLOUD_SLIDE_TIER === 'standard' ? 'standard' : 'ultra'
+            const started = Date.now()
+            const r = await gskSlideGenerate({
+              tier,
+              brief: String(op.brief ?? ''),
+              title: op.title ? String(op.title) : undefined,
+              styleSkill: op.styleSkill ? String(op.styleSkill) : undefined,
+              deckContext: op.deckContext,
+              images: Array.isArray(op.images) ? op.images : undefined,
+              width: op.width,
+              height: op.height,
+            })
+            bytes = r.bytes
+            console.log(
+              `[cloud-slide] page generated: tier=${tier} model=${r.model} bytes=${bytes.length} ms=${Date.now() - started}`,
+            )
+          } catch (cloudErr) {
+            console.warn(
+              '[cloud-slide] cloud failed, falling back to local:',
+              cloudErr instanceof Error ? cloudErr.message : cloudErr,
+            )
+            bytes = await buildLocalSlidePptx({
+              brief: String(op.brief ?? ''),
+              title: op.title ? String(op.title) : undefined,
+              styleSkill: op.styleSkill ? String(op.styleSkill) : undefined,
+              layout: typeof op.deckContext?.layout === 'string' ? op.deckContext.layout : undefined,
+              width: op.width,
+              height: op.height,
+            })
+          }
+        } else {
+          const started = Date.now()
+          bytes = await buildLocalSlidePptx({
+            brief: String(op.brief ?? ''),
+            title: op.title ? String(op.title) : undefined,
+            styleSkill: op.styleSkill ? String(op.styleSkill) : undefined,
+            layout: typeof op.deckContext?.layout === 'string' ? op.deckContext.layout : undefined,
+            width: op.width,
+            height: op.height,
+          })
+          console.log(
+            `[local-slide] page generated: bytes=${bytes.length} ms=${Date.now() - started}`,
+          )
+        }
         const path = join(dir, `${randomUUID()}.pptx`)
         await writeFile(path, bytes)
         issuedCloudPages.add(path)

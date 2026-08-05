@@ -17,7 +17,7 @@ import { renderSlidesToPngBase64 } from '../export-render'
 import { isQcEnabled, mergeQcPages, qcSlidePage, QC_MAX_PAGES } from './slide-qc'
 import { useI18n, t as tGlobal, aiLangDirective, type TFunc } from '../i18n/locale'
 import { Markdown } from '@arkoffice/ui'
-import { GensparkMark } from '../components/icons'
+import { ArkOfficeMark } from '../components/icons'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
@@ -112,11 +112,13 @@ interface ChatEntry {
   streaming?: boolean
   /** the run failed and this user message was rolled back out of the model context */
   undelivered?: boolean
-  /** the run failed because Genspark is signed out — render an inline sign-in button */
+  /** the run failed because the AI provider is signed out — render an inline sign-in button */
   loginRequired?: boolean
   tools?: ToolActivity[]
   /** Generation progress card (only one per turn, replaced in real time) */
   deckProgress?: DeckProgressSnapshot
+  /** local LLM FIFO: 1-based place in line */
+  queuePosition?: number | null
 }
 
 /** Empty deck → generation starters; deck with content → polish starters */
@@ -424,6 +426,22 @@ export function AiPanel({
   const runQcPassRef = useRef<() => Promise<void>>(() => Promise.resolve())
   /** DeckAccess reused by the QC pass (same executors as the main loop's slides skill) */
   const accessRef = useRef<DeckAccess | null>(null)
+  const cloudFeaturesRef = useRef(false)
+
+  useEffect(() => {
+    let alive = true
+    void window.slidesApi.cloudFeaturesEnabled?.().then((on) => {
+      if (alive) cloudFeaturesRef.current = on
+    })
+    const unsub = window.slidesApi.onCloudFeaturesChanged?.((on) => {
+      cloudFeaturesRef.current = on
+    })
+    return () => {
+      alive = false
+      unsub?.()
+    }
+  }, [])
+
   /** Wall-clock start of the current run, drives the elapsed badge */
   const runStartedAtRef = useRef(0)
   const historyBatchActiveRef = useRef(false)
@@ -716,6 +734,7 @@ export function AiPanel({
             styleSkill: args.style,
             deckContext: {
               ...(args.topic ? { topic: args.topic } : {}),
+              ...(args.layout ? { layout: args.layout } : {}),
               core_hook: args.coreHook,
               page_index: args.pageIndex,
               total_pages: args.totalPages,
@@ -875,6 +894,7 @@ export function AiPanel({
         })
       },
       searchImages: async (query: string, maxResults: number) => {
+        if (!cloudFeaturesRef.current) return []
         try {
           const r = await window.slidesApi.imageSearch(query, maxResults)
           return r.images.map((im) => im.imageUrl).filter(Boolean)
@@ -882,6 +902,7 @@ export function AiPanel({
           return []
         }
       },
+      cloudFeaturesEnabled: () => cloudFeaturesRef.current,
       saveSidecar: async (data) => {
         try {
           await window.slidesApi.saveStyleSidecar(data)
@@ -931,7 +952,16 @@ export function AiPanel({
       // Page-by-page deck generation needs more tool rounds
       maxTurns: 24,
       events: {
-        onText: (text) => patchLastAssistant({ text }),
+        onText: (text) => patchLastAssistant({ text, queuePosition: null }),
+        onQueue: (info) => {
+          if (info.position !== null && info.position > 0) {
+            patchLastAssistant({ queuePosition: info.position })
+          } else if (info.waiting > 0) {
+            patchLastAssistant({ queuePosition: info.waiting })
+          } else {
+            patchLastAssistant({ queuePosition: null })
+          }
+        },
         onToolStart: (call) => {
           // Live "running" chip: replaced in place by onToolExecuted
           const activity: ToolActivity = {
@@ -1368,7 +1398,7 @@ export function AiPanel({
   if (!open) {
     return (
       <button className="ai-rail" title={t('appAiRailExpand')} onClick={onExpand}>
-        <GensparkMark size={22} />
+        <ArkOfficeMark size={22} />
       </button>
     )
   }
@@ -1395,11 +1425,11 @@ export function AiPanel({
         onPointerDown={startResize}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Genspark AI"
+        aria-label="ArkOffice AI"
       />
       <div className="ai-panel-header">
         <span className="ai-panel-title">
-          <GensparkMark size={22} />
+          <ArkOfficeMark size={22} />
           {t('aiPanelTitle')}
         </span>
         <div className="ai-panel-header-actions">
@@ -1483,7 +1513,13 @@ export function AiPanel({
               {entry.role === 'assistant' && !entry.text && entry.streaming ? (
                 <span className="ai-typing-row">
                   <AiTypingIndicator
-                    label={entry.tools?.length ? t('aiContinuing') : t('aiThinking')}
+                    label={
+                      entry.queuePosition != null && entry.queuePosition > 0
+                        ? t('aiQueueWaiting', { n: String(entry.queuePosition) })
+                        : entry.tools?.length
+                          ? t('aiContinuing')
+                          : t('aiThinking')
+                    }
                   />
                 </span>
               ) : entry.role === 'assistant' ? (

@@ -106,6 +106,8 @@ export interface DeckAccess {
    * On search failure returns an empty array (fail-open; doesn't block the main generation path).
    */
   searchImages?(query: string, maxResults: number): Promise<string[]>
+  /** When false, cloud-only agent tools are omitted (local-first default). */
+  cloudFeaturesEnabled?(): boolean
   /** Whether cloud single-page generation is available (kill switch + gsk login state) */
   isCloudPageGenEnabled?(): Promise<boolean>
   /**
@@ -210,8 +212,8 @@ const AGENT_SYSTEM_PROMPT = `You are the AI assistant inside ArkOffice Slides (a
 
 ## Most important tool-selection principles (judge the scenario before acting)
 - **Creating a whole new deck (from scratch)** → first gather material (web_search) and images (image_search), then call **generate_deck**. With many pages, prefer **passing topic + approx_pages + context (the real material you found)** and let the system plan internally + generate page by page + display page by page (**you don't hand-write dozens of pages, and no pages get missed / arguments truncated**). For few pages where you already know each page, you may pass core_hook+style+pages directly.
-- **Adding 1 page or a few pages to an existing deck** → generate_deck(pages: briefs for just the new pages, insert_mode:"append"). Write each page's brief in detail (real content/data per region + layout); first look at the existing pages (get_deck_context) and pass a style description matching them so new pages stay consistent. **Even a single new page goes through this cloud generation; don't fall back to native tools and build a crude page**.
-- **Redoing / redesigning an existing page** (user says "redo this page / redesign it / try another layout / make it prettier") → **regenerate_slide**: first read_slide to get the page's original copy, then pass a detailed brief (copy the text/data to keep into the brief verbatim, state what to change and the target layout); the cloud service regenerates the page in place (other pages untouched). Don't dismantle and rebuild the whole page element by element with native tools.
+- **Adding 1 page or a few pages to an existing deck** → generate_deck(pages: briefs for just the new pages, insert_mode:"append"). Write each page's brief in detail (real content/data per region + layout); first look at the existing pages (get_deck_context) and pass a style description matching them so new pages stay consistent. **Even a single new page goes through generate_deck (local or cloud page builder); don't fall back to native tools and build a crude page**.
+- **Redoing / redesigning an existing page** (user says "redo this page / redesign it / try another layout / make it prettier") → **regenerate_slide**: first read_slide to get the page's original copy, then pass a detailed brief (copy the text/data to keep into the brief verbatim, state what to change and the target layout); regenerate_slide regenerates the page in place (other pages untouched). Don't dismantle and rebuild the whole page element by element with native tools.
 - **Deleting a page** → delete_slide(slideIndex).
 - **Modifying / fine-tuning existing elements** (position/size/alignment/distribution/relative nudges/text/style/fill/stroke, one or many elements) → always prefer **execute_slide_script** and do it in one script (see "Editing existing elements" below; read-write combined, no read_slide first). Don't blind-fire individual set_element_* calls. Add/delete elements with add_* / delete_element; redo a whole page with regenerate_slide.
 - **Elements inside a group**: direct children of a top-level group (marked "in group <id>" / els groupId) are edited exactly like normal elements — same script primitives and set_element_* tools, absolute coordinates. Only elements nested in a sub-group are read-only: call ungroup_element on the outer group first (ids on the page change afterwards; the result returns the fresh list). To delete a single group member, ungroup first too.
@@ -246,14 +248,14 @@ Generating a whole deck / adding pages (HTML pipeline first):
 
 Step 0 Questionnaire (mandatory when creating a whole new deck): first call ask_clarification to show a questionnaire card with 2–4 key trade-off questions for this topic (audience, usage scenario, tone/style, content focus), each with genuinely different options. **The user's choices directly determine the deck's Core Hook and style**; do the planning below only after getting the answers. (Ask only for a whole new deck; adding a few pages or editing needs no questionnaire. The card shows automatically — don't repeat the questions in your reply text.)
 
-Step A Research: when the topic involves facts/attractions/data, run web_search 1–2 times first for real content. **Use real data and facts in the design; no "XX%" or placeholder names**.
-Step B Image strategy: with generate_deck you **don't need image_search in advance** — the system auto-searches internally per page from the planned image_queries keywords and fills real URLs back (each keyword searched once, deduped across pages). **Travel/product/people/brand decks get images by default without the user asking; never fake images with CSS placeholders — slots needing images must be filled with real ones**. Only when redoing a page via regenerate_slide or adding images to existing pages via insert_web_image do you image_search yourself first (English keywords describing a concrete scene like "summer palace kunming lake", not generic words like "park").
+Step A Research: when the topic involves facts/attractions/data and web_search is available, run it 1–2 times first. **If web_search is disabled (air-gapped), skip it** and use user/attachment content or dataSource:"sample" with an explicit disclosure — never invent precise live facts.
+Step B Image strategy: with generate_deck you **don't need image_search in advance** — when image search is enabled, the system auto-searches internally per page from the planned image_queries keywords and fills real URLs back (each keyword searched once, deduped across pages). **If image search is disabled (air-gapped), omit image_queries / accept text-only pages** — never fake images with CSS placeholders. Only when redoing a page via regenerate_slide or adding images to existing pages via insert_web_image (and search is available) do you image_search yourself first (English keywords describing a concrete scene like "summer palace kunming lake", not generic words like "park").
 Step C Unified style: first define one design system for the whole deck — primary/secondary colors, title and body font-size scale, content margins, card/corner style (e.g. "teal primary + cream background + sans-serif fresh look"). **Every page's HTML strictly follows the same system; style must be consistent across pages**.
 Step D Generate (call generate_deck): with many pages pass topic + approx_pages + context (feed in the real material from Step A) and let the system plan internally; with few pages you may pass core_hook+style+pages directly (image_queries takes English image-search keywords; **the system auto-searches internally and fills real URLs back**, no image_search needed in advance). The system writes HTML page by page and lands pages as they generate; you don't hand-write HTML.
 Step E Vary layouts per page (avoid sameness): 3 parallel points→three-column cards; a key number→big-number hero; comparison→two columns; sequence→timeline; image+text→left-text-right-image / full-image with text overlay. **Content pages of one deck must not all use the same layout**.
 
 - **generate_deck is the first choice for a whole new deck**: with many pages pass topic+approx_pages+context; the system plans internally (auto-batching over the threshold), **auto-searches images**, writes HTML page by page, and **lands pages onto the canvas as they generate (the user sees them one by one)**. **Neither "only page 1 got generated" nor "arguments were truncated" can happen — the page count is guaranteed by the system loop**.
-- **When adding just 1 page or a few pages (common case)**: also use generate_deck with **pages (briefs for only the new pages) + insert_mode:"append"** (appended at the end, existing pages untouched). **New pages also go through the cloud generation for polish — don't fall back to native tools for a crude page just because it's one page**. Before adding, read_slide/get_deck_context to see the existing pages' style (primary color/layout) and pass a matching style description; write each brief with the real content per region.
+- **When adding just 1 page or a few pages (common case)**: also use generate_deck with **pages (briefs for only the new pages) + insert_mode:"append"** (appended at the end, existing pages untouched). **New pages also go through generate_deck for polish — don't fall back to native tools for a crude page just because it's one page**. Before adding, read_slide/get_deck_context to see the existing pages' style (primary color/layout) and pass a matching style description; write each brief with the real content per region.
 - Briefs should be concrete: what text/data/numbers go in each region, which image goes where, and the layout name — the cloud designer follows your brief; vague briefs produce generic pages.
 - After generation, if the user wants a tweak, edit the corresponding element with the native tools below; don't redo whole pages unprompted "to look better". Use regenerate_slide only when the user explicitly asks to redo a page.
 
@@ -505,7 +507,7 @@ const TOOLS: AgentToolDef[] = [
   {
     name: 'generate_image',
     description:
-      'AI image generation/editing (Genspark). Text-to-image, or pass referenceImageUrls for image editing; returns an image URL, then insert with insert_web_image. Use for custom illustrations/icons/backgrounds, style-consistent imagery, and edits like background removal/upscaling/outpainting; for real photos/screenshots still use image_search.',
+      'AI image generation/editing (optional cloud CLI). Text-to-image, or pass referenceImageUrls for image editing; returns an image URL, then insert with insert_web_image. Use for custom illustrations/icons/backgrounds, style-consistent imagery, and edits like background removal/upscaling/outpainting; for real photos/screenshots still use image_search.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -535,7 +537,7 @@ const TOOLS: AgentToolDef[] = [
   {
     name: 'analyze_media',
     description:
-      'Analyze media content (Genspark): understand images/audio/video. Pass media URLs (or local file paths) and analysis requirements; returns analysis text. Video supports extracting key points, structure, and time ranges — good for turning user material into usable deck content.',
+      'Analyze media content (optional cloud CLI): understand images/audio/video. Pass media URLs (or local file paths) and analysis requirements; returns analysis text. Video supports extracting key points, structure, and time ranges — good for turning user material into usable deck content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1398,10 +1400,16 @@ export function createSlidesSkill(access: DeckAccess): AgentSkill {
   // The HTML pipeline was already used in this conversation → later calls without an explicit mode default to append.
   // Safety net for when the AI ignores the "pass all pages at once" constraint: separate calls no longer overwrite each other (P0-1).
   const state: SkillState = { htmlGenerated: false }
+  const cloudTools = new Set(['web_search', 'image_search', 'generate_image', 'analyze_media'])
   return {
     id: 'slides',
     systemPrompt: AGENT_SYSTEM_PROMPT,
-    tools: TOOLS,
+    get tools() {
+      // Local-first: omit cloud tools unless the user opted in via Settings.
+      return access.cloudFeaturesEnabled?.()
+        ? TOOLS
+        : TOOLS.filter((tool) => !cloudTools.has(tool.name))
+    },
     buildContext: () => {
       const outline = `<deck outline>\n${buildDeckOutline(access.getSlides(), access.getCurrent(), access.getSelectedIds())}\n</deck outline>`
       const progress = buildProgressNote(state)
@@ -1453,7 +1461,7 @@ function blockScratchBuild(
   return {
     output:
       "For blank/from-scratch scenarios don't hand-assemble pages element by element with add_text_box/add_shape/add_smartart (crude layout). " +
-      'Use cloud generation instead: new whole deck → generate_deck; new pages for an existing deck → generate_deck(pages, insert_mode:"append"). ' +
+      'Use generate_deck instead: new whole deck → generate_deck; new pages for an existing deck → generate_deck(pages, insert_mode:"append"). ' +
       'Write it beautifully in HTML/CSS and the system converts it into editable elements. Use native tools only when the deck already has polished content and one element needs refining.',
     isError: true,
     mutated: false,
@@ -1951,6 +1959,18 @@ async function executeTool(
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiFailWebSearch'), 'query must not be empty')
       const r = await window.slidesApi.webSearch(query, Number(call.input.maxResults) || 6)
+      if (r.method === 'disabled') {
+        return fail(
+          t('aiFailWebSearch'),
+          'Web search is disabled. Enable Cloud features in Settings (sidebar), or set ARKOFFICE_ALLOW_WEB_SEARCH=1. Continue without live search: use user/attachment content, or dataSource:"sample" and disclose illustrative figures.',
+        )
+      }
+      if (r.method === 'error') {
+        return fail(
+          t('aiFailWebSearch'),
+          `web search failed (service error): ${r.error ?? 'unknown error'}`,
+        )
+      }
       if (state) state.webSearched = true
       // output for the LLM: title+URL+summary (each summary truncated to 120 chars to stay lean)
       const SNIPPET_MAX = 120
@@ -1978,6 +1998,18 @@ async function executeTool(
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiFailImageSearch'), 'query must not be empty')
       const r = await window.slidesApi.imageSearch(query, Number(call.input.maxResults) || 8)
+      if (r.method === 'disabled') {
+        return fail(
+          t('aiFailImageSearch'),
+          'Image search is disabled. Enable Cloud features in Settings (sidebar), or set ARKOFFICE_ALLOW_WEB_SEARCH=1. Continue without stock photos; generate_deck still works with text-only layouts.',
+        )
+      }
+      if (r.method === 'error') {
+        return fail(
+          t('aiFailImageSearch'),
+          `image search failed (service error): ${r.error ?? 'unknown error'}`,
+        )
+      }
       // output for the LLM: keep the existing format (the LLM needs to read URLs into image_queries; format unchanged)
       const lines = r.images.map(
         (im, i) =>
@@ -2182,7 +2214,7 @@ async function executeTool(
       if (!marker)
         return fail(
           t('aiFailRegen'),
-          `Cloud page generation failed (2 attempts): ${lastErr}. This is usually a temporary cloud service error — do not keep calling regenerate_slide in a loop. Instead, make the requested changes in place with execute_slide_script / set_element_* (group children are editable too), or tell the user to retry in a few minutes. The page was not modified.`,
+          `Page generation failed (2 attempts): ${lastErr}. This is usually a temporary cloud service error — do not keep calling regenerate_slide in a loop. Instead, make the requested changes in place with execute_slide_script / set_element_* (group children are editable too), or tell the user to retry in a few minutes. The page was not modified.`,
         )
       const r = await access.regenerateSlide(idx, marker)
       if (!r.ok)
@@ -2193,7 +2225,7 @@ async function executeTool(
       if (state) state.htmlGenerated = true
       return {
         output:
-          `Redid page ${idx + 1} in place from the brief via cloud generation (other pages untouched; the user can undo). Fine-tune afterwards with execute_slide_script / set_element_* tools.` +
+          `Redid page ${idx + 1} in place from the brief via page generation (other pages untouched; the user can undo). Fine-tune afterwards with execute_slide_script / set_element_* tools.` +
           imageFailNote(r.imageFailures),
         mutated: true,
         summary: t('aiSumRegen', { n: idx + 1 }),
@@ -2223,7 +2255,7 @@ async function executeTool(
       if (!access.generatePageCloud || !(await access.isCloudPageGenEnabled?.().catch(() => false)))
         return fail(
           t('aiFailGenDeck'),
-          'Cloud slide generation is unavailable — sign in to Genspark (gsk) first',
+          'Slide page generation is unavailable in this environment. Check local AI settings and try again.',
         )
       if (!access.generateFromHtml)
         return fail(

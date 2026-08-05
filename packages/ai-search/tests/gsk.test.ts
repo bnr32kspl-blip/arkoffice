@@ -102,10 +102,10 @@ describe('parseGskConvertResult', () => {
       status: 'ok',
       data: {
         result:
-          'Conversion complete. Download links:\n[report.docx](https://www.genspark.ai/api/files/s/JmS2WJHv)\n',
+          'Conversion complete. Download links:\n[report.docx](https://example.com/api/files/s/JmS2WJHv)\n',
       },
     }
-    expect(parseGskConvertResult(raw)).toBe('https://www.genspark.ai/api/files/s/JmS2WJHv')
+    expect(parseGskConvertResult(raw)).toBe('https://example.com/api/files/s/JmS2WJHv')
   })
 
   it('falls back to a bare URL without markdown', () => {
@@ -189,8 +189,8 @@ describe('parseToolCliNdjson', () => {
 describe('parseGskLoginLine', () => {
   it('extracts the auth URL', () => {
     expect(
-      parseGskLoginLine('[INFO] Login URL: https://www.genspark.ai/cli-auth?code=abc'),
-    ).toEqual({ kind: 'url', url: 'https://www.genspark.ai/cli-auth?code=abc' })
+      parseGskLoginLine('[INFO] Login URL: https://example.com/cli-auth?code=abc'),
+    ).toEqual({ kind: 'url', url: 'https://example.com/cli-auth?code=abc' })
   })
 
   it('extracts expires_in from the waiting line', () => {

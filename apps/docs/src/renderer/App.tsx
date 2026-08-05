@@ -22,7 +22,7 @@ import {
   type ThemeFonts,
 } from '@arkoffice/docx-engine'
 import type { AiSettings, OpenFileResult } from '../shared/ipc'
-import { AI_PROVIDERS } from '../shared/ipc'
+import { defaultAiSettings } from '../shared/ipc'
 import { AiPanel } from './ai/AiPanel'
 import { asianCharCount, countWords, nonAsianWordCount } from './word-count'
 import { toRoman } from './note-format'
@@ -250,15 +250,7 @@ interface DocStats {
   lines: number
 }
 
-const DEFAULT_SETTINGS: AiSettings = {
-  provider: 'anthropic',
-  providers: Object.fromEntries(
-    AI_PROVIDERS.map((p) => [
-      p.id,
-      { apiKey: '', model: p.defaultModel, baseUrl: p.needsBaseUrl ? '' : undefined },
-    ]),
-  ) as AiSettings['providers'],
-}
+const DEFAULT_SETTINGS: AiSettings = defaultAiSettings()
 
 export function App() {
   // subscribe to language switches for re-render; strings all go through module-level t, so memoized callbacks never capture stale closures
