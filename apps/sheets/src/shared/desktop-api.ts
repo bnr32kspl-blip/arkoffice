@@ -1941,4 +1941,6 @@ export interface WebSearchResult {
   results: Array<{ title: string; url: string; snippet: string }>
   answer?: string
   method: string
+  /** failure reason when method === 'error' */
+  error?: string
 }

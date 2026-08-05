@@ -695,14 +695,14 @@ async function openAiCompatibleTurn(
     cb.onActivity?.()
   }
   const queuePoll = cb.onQueue
-      ? startLlmQueuePoll({
-          baseUrl,
-          requestId: cb.requestId,
-          signal: wd.signal,
-          onQueue: (info) => cb.onQueue?.(info),
-          onActivity: () => cb.onActivity?.(),
-        })
-      : null
+    ? startLlmQueuePoll({
+        baseUrl,
+        ...(cb.requestId !== undefined ? { requestId: cb.requestId } : {}),
+        signal: wd.signal,
+        onQueue: (info) => cb.onQueue?.(info),
+        ...(cb.onActivity ? { onActivity: () => cb.onActivity?.() } : {}),
+      })
+    : null
   let response: Response
   try {
     response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
