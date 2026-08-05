@@ -4,7 +4,7 @@
 
 [genspark-ai/genoffice](https://github.com/genspark-ai/genoffice)（Apache License 2.0）をベースにフォークし、商標の分離・エンタープライズディレクトリ除外・ローカル LLM 前提の改修を行います。
 
-> **実装状況:** Phase 1–4 完了。次は Phase 5（閉域検証・署名配布）。  
+> **実装状況:** Phase 1–5 完了（署名付き本番インストーラは組織証明書が必要）。  
 > 進捗の可視化は Cursor Canvas「ArkOffice 実装状況」と、下表「実装結果」を更新していきます。
 
 ---
@@ -49,8 +49,8 @@ upstream の GenOffice は優秀なオープンソース AI Office ですが、�
 |------|-----|
 | 製品名 | ArkOffice |
 | npm スコープ | `@arkoffice/*` |
-| Electron appId | `com.arkoffice.app`（予定） |
-| 環境変数接頭辞 | `ARKOFFICE_*`（予定） |
+| Electron appId | `com.arkoffice.app` |
+| 環境変数接頭辞 | `ARKOFFICE_*` |
 
 ### AI プロバイダ
 
@@ -86,11 +86,20 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 | 2 | ArkOffice リブランディング（名称・アイコン・appId・商標スキャン） | **完了** |
 | 3 | ローカル LLM 既定化（llama.cpp / OpenAI 互換）+ Genspark 依存除去。クラウド OpenAI 互換は維持 | **完了** |
 | 4 | オートアップデート既定 OFF | **完了** |
-| 5 | 閉域検証・署名付き配布・運用手順 | 未着手 |
+| 5 | 閉域検証・署名付き配布・運用手順 | **完了**（組織証明書での署名は環境依存） |
 
 ---
 
 ## 実装結果
+
+### 2026-08-05 — Phase 5
+
+- 運用ドキュメント追加: [`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md)、[`docs/network-allowlist.md`](docs/network-allowlist.md)、[`docs/verification-checklist.md`](docs/verification-checklist.md)
+- 設定例: [`docs/examples/`](docs/examples/)
+- `npm run check:airgap`（既定 AI / 検索 OFF / 更新 OFF / ドキュメント有無を検証）を CI `license-boundary` に追加
+- `SECURITY.md` を閉域・ローカル LLM 既定に合わせて更新
+- sheets のプロキシプローブ URL を製品中立な `https://arkoffice.local` に変更
+- **組織のコード署名証明書**による本番署名ビルドは、証明書入手後に実行（手順は閉域デプロイ文書を参照）
 
 ### 2026-08-05 — Phase 4
 
@@ -145,7 +154,14 @@ upstream 由来の著作権表示（Mainfunc, Inc. / GenOffice の NOTICE 等）
 ```bash
 npm run check:no-ee
 npm run check:trademarks
+npm run check:airgap
 ```
+
+閉域運用の詳細:
+
+- [Air-gapped deployment](docs/air-gapped-deployment.md)
+- [Network allowlist](docs/network-allowlist.md)
+- [Verification checklist](docs/verification-checklist.md)
 
 ローカル LLM（例）:
 
@@ -177,4 +193,4 @@ npm run typecheck
 npm run dev
 ```
 
-Sheets の xlsx sidecar には Rust ツールチェーンが必要です。ローカル LLM には別途 llama.cpp（`llama-server`）または互換ランタイムが必要です（Phase 3 で既定化予定）。
+Sheets の xlsx sidecar には Rust ツールチェーンが必要です。ローカル LLM には別途 llama.cpp（`llama-server`）または互換ランタイムが必要です。

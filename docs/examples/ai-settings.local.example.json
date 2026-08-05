@@ -1,0 +1,15 @@
+{
+  "provider": "local",
+  "providers": {
+    "local": {
+      "apiKey": "",
+      "model": "REPLACE_WITH_MODEL_ID",
+      "baseUrl": "http://127.0.0.1:8080/v1"
+    },
+    "openai": { "apiKey": "", "model": "gpt-4.1-mini" },
+    "anthropic": { "apiKey": "", "model": "claude-opus-4-7" },
+    "gemini": { "apiKey": "", "model": "gemini-2.5-flash" },
+    "deepseek": { "apiKey": "", "model": "deepseek-chat" },
+    "custom": { "apiKey": "", "model": "", "baseUrl": "" }
+  }
+}

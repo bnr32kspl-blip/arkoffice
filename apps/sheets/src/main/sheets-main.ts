@@ -2731,7 +2731,7 @@ async function applyMainProcessProxy(): Promise<void> {
   }
   try {
     await app.whenReady()
-    const resolved = await electronSession.defaultSession.resolveProxy('https://api.anthropic.com')
+    const resolved = await electronSession.defaultSession.resolveProxy('https://arkoffice.local')
     const m = /PROXY\s+([^;]+)/i.exec(resolved || '')
     if (m?.[1]) {
       await setDispatcher(`http://${m[1].trim()}`)

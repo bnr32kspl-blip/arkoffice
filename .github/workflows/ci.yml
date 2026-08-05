@@ -38,6 +38,9 @@ jobs:
       - name: Ensure upstream product identifiers are absent
         run: npm run check:trademarks
 
+      - name: Ensure air-gap shipping defaults
+        run: npm run check:airgap
+
   test:
     needs: license-boundary
     runs-on: ubuntu-latest

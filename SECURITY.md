@@ -6,6 +6,23 @@ Please report suspected vulnerabilities privately to the ArkOffice maintainers
 (security contact will be published with the public repository). Do not open
 public issues for security reports. We aim to acknowledge reports within 72 hours.
 
+## Closed-network posture
+
+ArkOffice targets air-gapped and restricted networks (for example municipal and
+hospital endpoints). Shipping defaults:
+
+- AI uses a **local** OpenAI-compatible endpoint (`http://127.0.0.1:8080/v1`) —
+  typically llama.cpp `llama-server` — not a vendor cloud account.
+- Outbound web/image search is **off** unless `ARKOFFICE_ALLOW_WEB_SEARCH=1`.
+- Auto-update checks are **off** unless `ARKOFFICE_AUTO_UPDATE=1` or
+  `userData/update-preferences.json` sets `"enabled": true`.
+- The upstream `ee/` tree (Enterprise License) is not present in this repository.
+
+Document content and AI prompts leave the machine only toward the AI base URL
+the administrator configures (localhost or an approved intranet gateway). See
+[`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md) and
+[`docs/network-allowlist.md`](docs/network-allowlist.md).
+
 ## Process Security Posture
 
 All application windows run with the full Electron renderer lockdown:
@@ -18,8 +35,8 @@ All application windows run with the full Electron renderer lockdown:
   (`@arkoffice/electron-utils` → `safeExternalUrl`) that parses the URL and
   enforces a protocol allowlist (http/https; pdf link annotations additionally
   allow mailto). `file:`, `javascript:`, and custom schemes are always rejected.
-- No API keys are hardcoded. AI requests are proxied through the signed-in
-  account by default; user-supplied keys stay in the OS-level settings store.
+- No API keys are hardcoded. Cloud provider keys, when used, stay in the
+  OS-level / userData settings store. Local LLM keys may be empty.
 
 ## Threat Model: AI-Generated Layout Scripts (slides)
 
@@ -74,11 +91,13 @@ through `executeJavaScript` and destroys it under a watchdog timeout.
 
 ## Out of Scope
 
-- The cloud AI services this client talks to are operated separately and are
-  not part of this repository; issues with them should be reported through the
-  service provider's channels.
+- Optional cloud AI providers the operator explicitly configures are operated
+  by those vendors; issues with them should be reported through the provider's
+  channels.
 - Vulnerabilities that require an already-compromised machine or a modified
-  binary. This includes the deliberate environment-variable override points
-  for local development (`GSK_CLI_PATH`, `XLSX_SIDECAR_PATH`): setting them
-  requires control of the process environment, which is equivalent to code
-  execution on the machine.
+  binary. This includes deliberate environment-variable override points for
+  local development (`GSK_CLI_PATH`, `XLSX_SIDECAR_PATH`,
+  `ARKOFFICE_USER_DATA`): setting them requires control of the process
+  environment, which is equivalent to code execution on the machine.
+- Hyperlinks opened in the system browser after a user click (subject to OS and
+  proxy policy).

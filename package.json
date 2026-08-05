@@ -33,6 +33,7 @@
     "licenses": "node tools/check-licenses.mjs",
     "check:no-ee": "node tools/check-no-ee.mjs",
     "check:trademarks": "node tools/check-trademarks.mjs",
+    "check:airgap": "node tools/check-airgap-defaults.mjs",
     "dist:mac": "npm run notices && npm run build:all && npm run dist:mac -w @arkoffice/shell",
     "dist:win": "npm run notices && npm run build:all && npm run dist:win -w @arkoffice/shell"
   },
