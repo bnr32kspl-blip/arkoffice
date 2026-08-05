@@ -3,19 +3,19 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 export default defineConfig({
   main: {
-    // @genoffice/* workspace packages ship TS source (no build step, no
+    // @arkoffice/* workspace packages ship TS source (no build step, no
     // compiled entry point) — externalizing them makes Node's ESM loader try
     // to resolve their relative imports at runtime and fail. Bundle those;
     // externalize everything else (Electron, zod, node builtins).
     plugins: [
       externalizeDepsPlugin({
         exclude: [
-          '@genoffice/ai-provider',
-          '@genoffice/agent-core',
-          '@genoffice/ai-search',
-          '@genoffice/file-parse',
-          '@genoffice/electron-utils',
-          '@genoffice/i18n',
+          '@arkoffice/ai-provider',
+          '@arkoffice/agent-core',
+          '@arkoffice/ai-search',
+          '@arkoffice/file-parse',
+          '@arkoffice/electron-utils',
+          '@arkoffice/i18n',
         ],
       }),
     ],

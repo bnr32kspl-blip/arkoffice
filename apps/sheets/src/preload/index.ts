@@ -5,8 +5,8 @@ import type {
   AiSettings,
   AiStreamChunk,
   GenSparkAccountStatus,
-} from '@genoffice/ai-provider'
-import type { ProjectApi } from '@genoffice/project-store'
+} from '@arkoffice/ai-provider'
+import type { ProjectApi } from '@arkoffice/project-store'
 import type {
   AttachmentAddResult,
   AttachmentImageResult,

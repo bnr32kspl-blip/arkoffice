@@ -4,7 +4,7 @@
 
 [genspark-ai/genoffice](https://github.com/genspark-ai/genoffice)（Apache License 2.0）をベースにフォークし、商標の分離・エンタープライズディレクトリ除外・ローカル LLM 前提の改修を行います。
 
-> **実装状況:** Phase 1（`ee/` 除外）完了。次は Phase 2（ArkOffice リブランディング）。  
+> **実装状況:** Phase 1–2 完了。次は Phase 3（ローカル LLM 既定化 / Genspark 依存除去）。  
 > 進捗の可視化は Cursor Canvas「ArkOffice 実装状況」と、下表「実装結果」を更新していきます。
 
 ---
@@ -83,7 +83,7 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 | Phase | 内容 | 状態 |
 |-------|------|------|
 | 1 | `ee/` 完全除外（削除・履歴除去・CI ガード） | **完了** |
-| 2 | ArkOffice リブランディング（名称・アイコン・appId・商標スキャン） | 未着手 |
+| 2 | ArkOffice リブランディング（名称・アイコン・appId・商標スキャン） | **完了** |
 | 3 | ローカル LLM 既定化（llama.cpp / OpenAI 互換）+ Genspark 依存除去。クラウド OpenAI 互換は維持 | 未着手 |
 | 4 | オートアップデート既定 OFF | 未着手 |
 | 5 | 閉域検証・署名付き配布・運用手順 | 未着手 |
@@ -91,6 +91,14 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 ---
 
 ## 実装結果
+
+### 2026-08-05 — Phase 2
+
+- 製品識別子を **ArkOffice** に置換（`@arkoffice/*`、`com.arkoffice.app`、`ARKOFFICE_*`、`productName`）
+- シェルアプリアイコン（`icon.png` / `icon-mac.png` / `icon.ico` / `icon.icns`）を新規デザインで置換
+- `NOTICE` は Apache 帰属を維持しつつ製品名を ArkOffice（derived from GenOffice）に更新
+- `npm run check:trademarks` と CI `license-boundary` に商標ゲートを追加
+- Genspark クラウド AI 経路の除去は **Phase 3** で実施（現時点ではコード上に残存）
 
 ### 2026-08-05 — Phase 1
 
@@ -122,6 +130,7 @@ upstream 由来の著作権表示（Mainfunc, Inc. / GenOffice の NOTICE 等）
 
 ```bash
 npm run check:no-ee
+npm run check:trademarks
 ```
 
 ---

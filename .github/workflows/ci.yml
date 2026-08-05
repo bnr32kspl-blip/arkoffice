@@ -35,6 +35,9 @@ jobs:
       - name: Ensure ee/ is absent
         run: npm run check:no-ee
 
+      - name: Ensure upstream product identifiers are absent
+        run: npm run check:trademarks
+
   test:
     needs: license-boundary
     runs-on: ubuntu-latest
@@ -111,8 +114,8 @@ jobs:
       # leave every untouched package entry byte-identical (fails closed otherwise).
       - name: Sheets compatibility gate
         run: |
-          npm run fixtures -w @genoffice/sheets
-          npm run compat -w @genoffice/sheets
+          npm run fixtures -w @arkoffice/sheets
+          npm run compat -w @arkoffice/sheets
 
   e2e:
     needs: license-boundary
@@ -148,7 +151,7 @@ jobs:
         run: npm run build:all
 
       - name: Generate sheets fixtures
-        run: npm run fixtures -w @genoffice/sheets
+        run: npm run fixtures -w @arkoffice/sheets
 
       # Newer Ubuntu kernels ship an AppArmor policy that blocks unprivileged
       # user namespaces, which kills the Chromium zygote even with --no-sandbox

@@ -27,7 +27,7 @@ import menuXlsxIcon1x from './assets/menu-xlsx.png?asset'
 import menuXlsxIcon2x from './assets/menu-xlsx@2x.png?asset'
 import menuPptxIcon1x from './assets/menu-pptx.png?asset'
 import menuPptxIcon2x from './assets/menu-pptx@2x.png?asset'
-import { createI18n, isLang, normalizeLang, setUiLang, type Lang } from '@genoffice/i18n'
+import { createI18n, isLang, normalizeLang, setUiLang, type Lang } from '@arkoffice/i18n'
 import {
   appMenuLabels,
   contextMenuLabels,
@@ -35,9 +35,9 @@ import {
   installContextMenu,
   installNavigationGuard,
   windowMenuTemplate,
-} from '@genoffice/electron-utils'
+} from '@arkoffice/electron-utils'
 import { readAppSettings, writeAppSetting } from './app-settings'
-import { ProjectStore } from '@genoffice/project-store'
+import { ProjectStore } from '@arkoffice/project-store'
 import {
   gskConvertPdfToDocx,
   gskLogin,
@@ -46,7 +46,7 @@ import {
   gskLogout,
   hasGskAuth,
   resolveGskEntry,
-} from '@genoffice/ai-search'
+} from '@arkoffice/ai-search'
 
 import {
   buildDocsMenu,
@@ -120,7 +120,7 @@ import { TabManager } from './tab-manager'
 import { initAutoUpdater } from './updater'
 
 /**
- * GenOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
+ * ArkOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
  * docs and sheets modules as WebContentsView tabs behind a WPS-style tab
  * strip. The shell owns the lifecycle — single-instance lock, file-
  * association routing by extension, and per-active-tab menu switching.
@@ -130,16 +130,16 @@ import { initAutoUpdater } from './updater'
 
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev
-// run silently quits and forwards its argv to the running installed GenOffice.
-// GENOFFICE_USER_DATA: test drivers point this at a scratch dir so an
+// run silently quits and forwards its argv to the running installed ArkOffice.
+// ARKOFFICE_USER_DATA: test drivers point this at a scratch dir so an
 // automated instance can run alongside the dev instance (separate lock).
 if (!app.isPackaged)
   app.setPath(
     'userData',
-    process.env.GENOFFICE_USER_DATA ?? join(app.getPath('appData'), 'GenOffice Dev'),
+    process.env.ARKOFFICE_USER_DATA ?? join(app.getPath('appData'), 'ArkOffice Dev'),
   )
 
-// The product rename from "AI Office" to GenOffice changed the userData path; migrate old user data once
+// The product rename from "AI Office" to ArkOffice changed the userData path; migrate old user data once
 if (app.isPackaged) {
   const oldDir = join(app.getPath('appData'), 'AI Office')
   const newDir = app.getPath('userData')
@@ -192,7 +192,7 @@ configurePdfRuntime({
 
 // ---- UI language ----
 // Persisted in userData/app-settings.json so the editor modules can read the
-// same file when they pick up i18n later. GENOFFICE_LANG overrides for tests.
+// same file when they pick up i18n later. ARKOFFICE_LANG overrides for tests.
 
 const APP_SETTINGS_PATH = () => join(app.getPath('userData'), 'app-settings.json')
 
@@ -200,8 +200,8 @@ let uiLang: Lang | null = null
 
 function currentLang(): Lang {
   if (uiLang) return uiLang
-  if (process.env.GENOFFICE_LANG) {
-    uiLang = normalizeLang(process.env.GENOFFICE_LANG)
+  if (process.env.ARKOFFICE_LANG) {
+    uiLang = normalizeLang(process.env.ARKOFFICE_LANG)
     setUiLang(uiLang)
     return uiLang
   }
@@ -222,7 +222,7 @@ function persistLang(lang: Lang): void {
 // The GenTeam community page opened from the onboarding's second slide.
 // Stable short link served by the genspark.ai site; it 302s to the tokened
 // invite link, which stays out of this repo and rotates server-side.
-const GENTEAM_URL = 'https://www.genspark.ai/genoffice/join'
+const GENTEAM_URL = 'https://www.genspark.ai/arkoffice/join'
 
 const tMain = createI18n({
   zh: {
@@ -1193,7 +1193,7 @@ function createShellWindow(): void {
     height: 900,
     minWidth: 980,
     minHeight: 600,
-    title: 'GenOffice',
+    title: 'ArkOffice',
     // vibrancy: editor modules punch translucent regions (e.g. the slides
     // thumbnail pane) through to the desktop
     ...(process.platform === 'darwin'

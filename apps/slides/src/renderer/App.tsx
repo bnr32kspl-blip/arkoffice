@@ -8,7 +8,7 @@ import type {
   ChartRenderNode,
   PictureRenderNode,
   TableRenderNode,
-} from '@genoffice/pptx-render'
+} from '@arkoffice/pptx-render'
 import type {
   AiSettings,
   AnimEffectKind,

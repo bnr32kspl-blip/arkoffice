@@ -1,4 +1,4 @@
-# Contributing to GenOffice
+# Contributing to ArkOffice
 
 Thanks for your interest in contributing. This document covers the local
 setup, the checks a change must pass, and the conventions used in this
@@ -6,19 +6,11 @@ repository.
 
 ## How changes land here
 
-This GitHub repository is a mirror: development happens in a private tree,
-and `main` here advances through single squashed snapshot commits
-(`Sync snapshot (<date>)`). That is why every file in a sync shows the same
-last-commit message, and why nobody — maintainers included — pushes to
-`main` directly.
-
-External pull requests are welcome and are reviewed here. Once a change is
-accepted, a maintainer imports it into the private tree with your authorship
-preserved as a `Co-authored-by:` trailer, and it ships to `main` in the next
-snapshot; your PR is then closed with a note pointing at the snapshot that
-carried it. GitHub will show the PR as "closed" rather than "merged" — the
-code and the attribution still land. Issues and feature requests are handled
-directly on this repository as usual.
+ArkOffice is maintained as an independent fork of the upstream Apache-2.0
+office suite core. Open pull requests against this repository. Accepted
+changes land on `main` with clear commit messages. Do not reintroduce
+upstream's `ee/` tree or upstream product trademarks in shipping UI or
+package identifiers.
 
 ## Repository layout
 
@@ -99,10 +91,10 @@ testing and local overrides:
 
 | Variable                                                 | Effect                                                                 |
 | -------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `GENOFFICE_USER_DATA`                                    | Override the Electron userData directory (test isolation)              |
-| `GENOFFICE_LANG`                                         | Force the UI language instead of following the OS locale               |
-| `GENOFFICE_FAKE_UPDATE`                                  | Exercise the updater UI without a real release feed                    |
-| `GENOFFICE_CLOUD_SLIDE`, `GENOFFICE_CLOUD_SLIDE_TIER`    | Route slide generation through the cloud endpoint                      |
+| `ARKOFFICE_USER_DATA`                                    | Override the Electron userData directory (test isolation)              |
+| `ARKOFFICE_LANG`                                         | Force the UI language instead of following the OS locale               |
+| `ARKOFFICE_FAKE_UPDATE`                                  | Exercise the updater UI without a real release feed                    |
+| `ARKOFFICE_CLOUD_SLIDE`, `ARKOFFICE_CLOUD_SLIDE_TIER`    | Route slide generation through the cloud endpoint                      |
 | `GSK_API_KEY`, `GSK_CLI_PATH`                            | Genspark credentials / CLI location for the built-in AI provider       |
 | `AI_SEARCH_DISABLE_GSK`, `SERPER_API_KEY`                | Disable the gsk search backend / supply a Serper key instead           |
 | `XLSX_SIDECAR_PATH`, `XLSX_OPEN_PATH`, `XLSX_DEBUG_PORT` | Point at a locally built xlsx sidecar and its debug port               |
