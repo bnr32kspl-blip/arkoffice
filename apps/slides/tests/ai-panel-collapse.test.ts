@@ -25,7 +25,7 @@ vi.mock('react-konva', () => {
 })
 
 import { AiPanel } from '../src/renderer/ai/AiPanel'
-import { AI_PROVIDERS, defaultAiSettings, type AiSettings } from '../src/shared/ipc'
+import { defaultAiSettings, type AiSettings } from '../src/shared/ipc'
 
 const settings: AiSettings = { ...defaultAiSettings(), provider: 'anthropic' }
 

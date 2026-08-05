@@ -47,11 +47,6 @@ const REPLACEMENTS = [
   [/\bgenoffice\b/g, 'arkoffice'],
 ]
 
-/** Files where ArkOffice must remain as historical / legal attribution */
-const PRESERVE_PATTERNS = [
-  // handled specially below
-]
-
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue

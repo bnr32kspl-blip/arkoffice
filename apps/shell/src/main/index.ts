@@ -42,7 +42,6 @@ import { getModelsDirStatus } from './llm-models'
 import {
   ensureLlmRuntime,
   getLlmRuntimeStatus,
-  refreshLlmRuntime,
   stopLlmRuntime,
 } from './llm-runtime'
 import { ProjectStore } from '@arkoffice/project-store'

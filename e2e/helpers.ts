@@ -25,6 +25,11 @@ interface LaunchOptions {
   lang?: string
   /** pre-seed app-settings.json with onboardingSeen=true to start at the home screen */
   onboardingSeen?: boolean
+  /**
+   * Pre-seed llmRuntimeSeen (default true). The LLM runtime first-run wizard
+   * otherwise covers Home and breaks e2e assertions/clicks.
+   */
+  llmRuntimeSeen?: boolean
   /** subdir of e2e/artifacts to store this launch's video in */
   videoDir: string
   /** absolute document path passed as argv, opened in an editor tab on launch */
@@ -42,10 +47,14 @@ export async function launchShell(options: LaunchOptions): Promise<LaunchedApp> 
     throw new Error(`Missing build output at ${SHELL_MAIN} — run \`npm run build:all\` first`)
   }
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'arkoffice-e2e-')))
-  if (options.onboardingSeen) {
+  const llmRuntimeSeen = options.llmRuntimeSeen !== false
+  if (options.onboardingSeen || llmRuntimeSeen) {
     await writeFile(
       join(userDataDir, 'app-settings.json'),
-      JSON.stringify({ onboardingSeen: true }),
+      JSON.stringify({
+        ...(options.onboardingSeen ? { onboardingSeen: true } : {}),
+        ...(llmRuntimeSeen ? { llmRuntimeSeen: true } : {}),
+      }),
     )
   }
   const require = createRequire(join(SHELL_DIR, 'package.json'))

@@ -8,6 +8,8 @@ test.describe('first-run onboarding', () => {
     try {
       await expect(page.locator('.home-hero')).toBeVisible()
       await expect(page.locator('.onb-overlay')).toHaveCount(0)
+      // e2e seeds llmRuntimeSeen by default so the LLM wizard does not cover Home
+      await expect(page.locator('.llm-overlay')).toHaveCount(0)
       await page.screenshot({ path: screenshotPath('onboarding-removed-home') })
     } finally {
       await closeAndSaveVideo(launched, 'onboarding-removed')

@@ -13,7 +13,6 @@ import type {
 import { fileCountKey, visiblePageCount } from './counts'
 import { useI18n } from './locale'
 import type { I18n, StringKey } from './locale'
-import { LlmSettingsPanel } from './LlmSettingsPanel'
 import { SidebarSettings } from './SidebarSettings'
 
 declare global {
