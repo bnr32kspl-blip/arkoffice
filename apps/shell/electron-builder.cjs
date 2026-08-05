@@ -12,6 +12,8 @@
  * When the variable is unset (forks, PR smoke builds, plain local packaging)
  * the publish config is omitted: electron-builder then bakes no
  * app-update.yml into the app and in-app auto-update stays disabled.
+ * Even when a feed URL is baked in, ArkOffice keeps auto-update opt-in via
+ * ARKOFFICE_AUTO_UPDATE / update-preferences.json (default off).
  */
 
 const { existsSync } = require('node:fs')

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { app, dialog } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
@@ -5,19 +7,14 @@ import type { UpdateInfo } from 'electron-updater'
 import { createI18n, getUiLang } from '@arkoffice/i18n'
 
 /**
- * Full-package auto-update for the standalone ArkOffice Docs app over the generic
- * provider (Azure CDN).
+ * Full-package auto-update for the standalone ArkOffice Docs app.
  *
- * electron-builder bakes the publish URL into resources/app-update.yml at
- * package time and emits the update feed (latest.yml on Windows,
- * latest-mac.yml on macOS) next to the installers; the release pipeline
- * uploads both to the CDN. Standalone docs builds currently ship without a
- * publish config, so packaged runs simply log the missing-feed error.
+ * Default for ArkOffice: **disabled**. Enable with `ARKOFFICE_AUTO_UPDATE=1`
+ * or `{ "enabled": true }` in userData/update-preferences.json.
  *
- * Unlike the shell's modal update window, docs keeps the flow minimal:
- * updates download silently in the background and a single native dialog
- * offers "Restart & Install" once the payload is ready. Declining defers the
- * install to normal app quit (autoInstallOnAppQuit).
+ * When enabled, electron-builder's app-update.yml feed is used. Updates
+ * download silently and a native dialog offers install; declining defers to
+ * quit (autoInstallOnAppQuit).
  */
 
 const tUpd = createI18n({
@@ -181,6 +178,21 @@ function log(...args: unknown[]): void {
   console.log('[docs-updater]', ...args)
 }
 
+/** Auto-update is opt-in. Env wins over the preferences file; default is off. */
+export function isAutoUpdateEnabled(): boolean {
+  const env = process.env.ARKOFFICE_AUTO_UPDATE?.trim().toLowerCase()
+  if (env === '0' || env === 'false' || env === 'off' || env === 'no') return false
+  if (env === '1' || env === 'true' || env === 'on' || env === 'yes') return true
+  try {
+    const prefPath = join(app.getPath('userData'), 'update-preferences.json')
+    if (!existsSync(prefPath)) return false
+    const pref = JSON.parse(readFileSync(prefPath, 'utf8')) as { enabled?: unknown }
+    return pref.enabled === true
+  } catch {
+    return false
+  }
+}
+
 async function promptInstall(win: BrowserWindow | null, info: UpdateInfo): Promise<void> {
   const lang = getUiLang()
   const options = {
@@ -214,6 +226,11 @@ export function initDocsAutoUpdater(getWindow: () => BrowserWindow | null): void
   // unsigned local builds check but never install.
   if (!app.isPackaged) return
   if (process.platform !== 'win32' && process.platform !== 'darwin') return
+
+  if (!isAutoUpdateEnabled()) {
+    log('auto-update disabled (set ARKOFFICE_AUTO_UPDATE=1 or update-preferences.json to enable)')
+    return
+  }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true

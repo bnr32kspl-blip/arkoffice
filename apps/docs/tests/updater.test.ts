@@ -15,6 +15,7 @@ vi.mock('electron', () => ({
       return appState.isPackaged
     },
     getVersion: () => '0.1.0',
+    getPath: () => '/tmp/arkoffice-test-userdata',
   },
   dialog: {
     showMessageBox: (...args: unknown[]) => showMessageBox(...args),
@@ -77,6 +78,7 @@ beforeEach(() => {
   vi.resetModules()
   vi.useFakeTimers()
   appState.isPackaged = true
+  delete process.env.ARKOFFICE_AUTO_UPDATE
   updaterState.listeners.clear()
   updaterState.autoDownload = true
   updaterState.autoInstallOnAppQuit = false
@@ -91,6 +93,7 @@ afterEach(() => {
   vi.useRealTimers()
   platformSpy?.restore()
   platformSpy = null
+  delete process.env.ARKOFFICE_AUTO_UPDATE
 })
 
 describe('initDocsAutoUpdater', () => {
@@ -113,7 +116,17 @@ describe('initDocsAutoUpdater', () => {
     expect(checkForUpdates).not.toHaveBeenCalled()
   })
 
-  it('configures silent full-package download and checks after the initial delay', async () => {
+    it('does not check for updates by default (air-gapped default)', async () => {
+    const { initDocsAutoUpdater } = await loadUpdater()
+    initDocsAutoUpdater(() => null)
+    vi.advanceTimersByTime(FIRST_CHECK_DELAY_MS)
+    expect(updaterState.listeners.size).toBe(0)
+    expect(checkForUpdates).not.toHaveBeenCalled()
+  })
+
+it('configures silent full-package download and checks after the initial delay', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initDocsAutoUpdater } = await loadUpdater()
     initDocsAutoUpdater(() => null)
     expect(updaterState.autoDownload).toBe(true)
@@ -125,6 +138,8 @@ describe('initDocsAutoUpdater', () => {
   })
 
   it('installs immediately when the user confirms the downloaded update', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     showMessageBox.mockResolvedValue({ response: 0 })
     const { initDocsAutoUpdater } = await loadUpdater()
     initDocsAutoUpdater(() => null)
@@ -135,6 +150,8 @@ describe('initDocsAutoUpdater', () => {
   })
 
   it('does not re-prompt for a version the user dismissed', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     showMessageBox.mockResolvedValue({ response: 1 })
     const { initDocsAutoUpdater } = await loadUpdater()
     initDocsAutoUpdater(() => null)
@@ -155,6 +172,8 @@ describe('initDocsAutoUpdater', () => {
   })
 
   it('is idempotent across repeated init calls', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initDocsAutoUpdater } = await loadUpdater()
     initDocsAutoUpdater(() => null)
     initDocsAutoUpdater(() => null)

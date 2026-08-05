@@ -1,3 +1,26 @@
+/**
+ * Full-package auto-update over the generic provider (Azure CDN / intranet feed).
+ *
+ * Default for ArkOffice: **disabled**. Closed-network deployments must not
+ * phone home. Enable with either:
+ *   - env `ARKOFFICE_AUTO_UPDATE=1`, or
+ *   - `{ "enabled": true }` in userData/update-preferences.json
+ *
+ * When enabled, the packaged app reads the feed URL from
+ * resources/app-update.yml (baked by electron-builder from
+ * ARKOFFICE_UPDATE_URL at build time).
+ *
+ * UX is the strong-guidance modal card (update-window.ts), not a native
+ * dialog. Windows updates through the NSIS installer (latest.yml); macOS
+ * through the zip target (latest-mac.yml).
+ *
+ * Dev preview: ARKOFFICE_FAKE_UPDATE=<version> in an unpacked run opens the
+ * window with a simulated download so the UI can be exercised end to end
+ * (does not require auto-update to be enabled).
+ */
+
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { app } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
@@ -5,25 +28,6 @@ import type { UpdateInfo } from 'electron-updater'
 import { createI18n, getUiLang, htmlLang } from '@arkoffice/i18n'
 import type { UpdateUiState, UpdateUiStrings } from '../shared/update-api'
 import { closeUpdateWindow, pushUpdateState, showUpdateWindow } from './update-window'
-
-/**
- * Full-package auto-update over the generic provider (Azure CDN).
- *
- * The release pipeline publishes `latest.yml` + the versioned installer to
- * the update channel prefix (production builds only). The packaged app reads
- * that URL from resources/app-update.yml, which electron-builder bakes in
- * from the `publish` config in apps/shell/electron-builder.cjs — the URL
- * itself is injected at build time via the ARKOFFICE_UPDATE_URL env var and
- * is intentionally not committed to the repo.
- *
- * UX is the strong-guidance modal card (update-window.ts), not a native
- * dialog. Windows updates through the NSIS installer (latest.yml); macOS
- * through the zip target (latest-mac.yml), both published by the internal
- * release pipeline.
- *
- * Dev preview: ARKOFFICE_FAKE_UPDATE=<version> in an unpacked run opens the
- * window with a simulated download so the UI can be exercised end to end.
- */
 
 const tUpd = createI18n({
   zh: {
@@ -263,6 +267,23 @@ function log(...args: unknown[]): void {
   console.log('[updater]', ...args)
 }
 
+/**
+ * Auto-update is opt-in. Env wins over the preferences file; default is off.
+ */
+export function isAutoUpdateEnabled(): boolean {
+  const env = process.env.ARKOFFICE_AUTO_UPDATE?.trim().toLowerCase()
+  if (env === '0' || env === 'false' || env === 'off' || env === 'no') return false
+  if (env === '1' || env === 'true' || env === 'on' || env === 'yes') return true
+  try {
+    const prefPath = join(app.getPath('userData'), 'update-preferences.json')
+    if (!existsSync(prefPath)) return false
+    const pref = JSON.parse(readFileSync(prefPath, 'utf8')) as { enabled?: unknown }
+    return pref.enabled === true
+  } catch {
+    return false
+  }
+}
+
 function uiStrings(): UpdateUiStrings {
   const lang = getUiLang()
   return {
@@ -304,6 +325,11 @@ export function initAutoUpdater(getWindow: () => BrowserWindow | null): void {
   // — dmg is first-install only).
   if (!app.isPackaged) return
   if (process.platform !== 'win32' && process.platform !== 'darwin') return
+
+  if (!isAutoUpdateEnabled()) {
+    log('auto-update disabled (set ARKOFFICE_AUTO_UPDATE=1 or update-preferences.json to enable)')
+    return
+  }
 
   autoUpdater.autoDownload = false
   // if the user picked "later" after download, install on normal quit

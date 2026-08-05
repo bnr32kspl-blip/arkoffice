@@ -4,7 +4,7 @@
 
 [genspark-ai/genoffice](https://github.com/genspark-ai/genoffice)（Apache License 2.0）をベースにフォークし、商標の分離・エンタープライズディレクトリ除外・ローカル LLM 前提の改修を行います。
 
-> **実装状況:** Phase 1–3 完了。次は Phase 4（オートアップデート既定 OFF）。  
+> **実装状況:** Phase 1–4 完了。次は Phase 5（閉域検証・署名配布）。  
 > 進捗の可視化は Cursor Canvas「ArkOffice 実装状況」と、下表「実装結果」を更新していきます。
 
 ---
@@ -74,7 +74,7 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 | ローカル LLM | ON（要ローカルサーバ） | 外向きフォールバックなし |
 | クラウド AI | 設定で選択可 | OpenAI 互換 |
 | Web 検索など外向きツール | OFF | 閉域では無効のまま |
-| オートアップデート | **OFF** | 機能は残置。管理者有効化 + URL 設定時のみ |
+| オートアップデート | **OFF** | `ARKOFFICE_AUTO_UPDATE=1` または update-preferences.json で有効化 |
 
 ---
 
@@ -85,12 +85,19 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 | 1 | `ee/` 完全除外（削除・履歴除去・CI ガード） | **完了** |
 | 2 | ArkOffice リブランディング（名称・アイコン・appId・商標スキャン） | **完了** |
 | 3 | ローカル LLM 既定化（llama.cpp / OpenAI 互換）+ Genspark 依存除去。クラウド OpenAI 互換は維持 | **完了** |
-| 4 | オートアップデート既定 OFF | 未着手 |
+| 4 | オートアップデート既定 OFF | **完了** |
 | 5 | 閉域検証・署名付き配布・運用手順 | 未着手 |
 
 ---
 
 ## 実装結果
+
+### 2026-08-05 — Phase 4
+
+- shell / docs の自動更新チェックを **既定 OFF**
+- 有効化: `ARKOFFICE_AUTO_UPDATE=1`、または `userData/update-preferences.json` の `{ "enabled": true }`
+- 機能コード（electron-updater）は残置。`ARKOFFICE_FAKE_UPDATE` による UI プレビューも維持
+- updater ユニットテスト更新・通過
 
 ### 2026-08-05 — Phase 3
 
@@ -145,6 +152,16 @@ npm run check:trademarks
 ```bash
 llama-server -m model.gguf --port 8080
 # ArkOffice Settings → Local (llama.cpp) → Base URL http://127.0.0.1:8080/v1 + model id
+```
+
+オートアップデートを有効にする場合（閉域では通常不要）:
+
+```bash
+# 環境変数
+set ARKOFFICE_AUTO_UPDATE=1
+
+# または userData/update-preferences.json
+# { "enabled": true }
 ```
 
 ---

@@ -15,6 +15,7 @@ vi.mock('electron', () => ({
       return appState.isPackaged
     },
     getVersion: () => '0.1.0',
+    getPath: () => '/tmp/arkoffice-test-userdata',
   },
 }))
 
@@ -102,6 +103,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   appState.isPackaged = true
   delete process.env.ARKOFFICE_FAKE_UPDATE
+  delete process.env.ARKOFFICE_AUTO_UPDATE
   updaterState.listeners.clear()
   updaterState.autoDownload = true
   updaterState.autoInstallOnAppQuit = false
@@ -121,6 +123,7 @@ afterEach(() => {
   platformSpy?.restore()
   platformSpy = null
   delete process.env.ARKOFFICE_FAKE_UPDATE
+  delete process.env.ARKOFFICE_AUTO_UPDATE
 })
 
 describe('initAutoUpdater', () => {
@@ -144,7 +147,17 @@ describe('initAutoUpdater', () => {
     expect(checkForUpdates).not.toHaveBeenCalled()
   })
 
-  it('configures manual full-package download and checks after the initial delay', async () => {
+    it('does not check for updates by default (air-gapped default)', async () => {
+    const { initAutoUpdater } = await loadUpdater()
+    initAutoUpdater(() => null)
+    vi.advanceTimersByTime(FIRST_CHECK_DELAY_MS + RECHECK_INTERVAL_MS)
+    expect(updaterState.listeners.size).toBe(0)
+    expect(checkForUpdates).not.toHaveBeenCalled()
+  })
+
+it('configures manual full-package download and checks after the initial delay', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     expect(updaterState.autoDownload).toBe(false)
@@ -156,6 +169,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('re-checks on the periodic interval', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     vi.advanceTimersByTime(FIRST_CHECK_DELAY_MS)
@@ -165,6 +180,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('is idempotent across repeated init calls', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     initAutoUpdater(() => null)
@@ -173,6 +190,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('opens the update window with the available state when an update is found', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.2.0' })
@@ -188,6 +207,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('starts the download and pushes progress when the user clicks download', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.2.0' })
@@ -203,6 +224,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('surfaces a failed download as the error phase', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     downloadUpdate.mockImplementation(() => Promise.reject(new Error('offline')))
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
@@ -213,6 +236,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('closes the window and installs on restart when the user confirms', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     updaterState.listeners.get('update-available')!({ version: '0.2.0' })
@@ -225,6 +250,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('does not re-prompt for a version the user dismissed this session', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
     const available = updaterState.listeners.get('update-available')!
@@ -242,6 +269,8 @@ describe('initAutoUpdater', () => {
   })
 
   it('swallows background check failures', async () => {
+    process.env.ARKOFFICE_AUTO_UPDATE = '1'
+
     checkForUpdates.mockImplementation(() => Promise.reject(new Error('offline')))
     const { initAutoUpdater } = await loadUpdater()
     initAutoUpdater(() => null)
