@@ -1,6 +1,5 @@
 import type { AgentMessage, AgentToolCall, AgentToolDef } from '@arkoffice/agent-core'
 import { httpBodyDetail } from './http-error'
-import { GENSPARK_LLM_BASE_URLS, gensparkAttributionHeaders } from './providers'
 import type { AiProviderConfig, AiProviderId } from './types'
 import { createStreamWatchdog, type StreamWatchdog } from './watchdog'
 
@@ -280,7 +279,6 @@ async function anthropicTurn(
         // browser-semantics headers; Anthropic rejects those with 403 "Request not allowed". This
         // header is the official opt-in for direct access from browser/Electron environments.
         'anthropic-dangerous-direct-browser-access': 'true',
-        ...gensparkAttributionHeaders(baseUrl),
       },
       body: JSON.stringify({
         model: config.model,
@@ -495,7 +493,6 @@ async function geminiTurn(
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': config.apiKey,
-      ...gensparkAttributionHeaders(baseUrl),
     },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
@@ -698,7 +695,6 @@ async function openAiCompatibleTurn(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
-      ...gensparkAttributionHeaders(baseUrl),
     },
     body: JSON.stringify({
       model: config.model,
@@ -819,40 +815,6 @@ export async function streamForProvider(
   cb: StreamCallbacks,
 ): Promise<void> {
   switch (provider) {
-    case 'genspark':
-      // The proxy exposes three protocol-specific endpoints; route by model id prefix: claude uses
-      // the Anthropic protocol (preserves image input fidelity), gemini uses Gemini, rest OpenAI-compatible
-      if (config.model.startsWith('claude')) {
-        return streamAnthropic(
-          config,
-          system,
-          messages,
-          tools,
-          maxTokens,
-          cb,
-          GENSPARK_LLM_BASE_URLS.anthropic,
-        )
-      }
-      if (config.model.startsWith('gemini')) {
-        return streamGemini(
-          config,
-          system,
-          messages,
-          tools,
-          maxTokens,
-          cb,
-          GENSPARK_LLM_BASE_URLS.gemini,
-        )
-      }
-      return streamOpenAiCompatible(
-        GENSPARK_LLM_BASE_URLS.openai,
-        config,
-        system,
-        messages,
-        tools,
-        maxTokens,
-        cb,
-      )
     case 'anthropic':
       return streamAnthropic(config, system, messages, tools, maxTokens, cb)
     case 'gemini':
@@ -868,8 +830,15 @@ export async function streamForProvider(
         maxTokens,
         cb,
       )
+    case 'local':
     case 'custom':
-      if (!config.baseUrl) throw new Error('A custom provider requires a Base URL')
+      if (!config.baseUrl) {
+        throw new Error(
+          provider === 'local'
+            ? 'Local provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)'
+            : 'A custom provider requires a Base URL',
+        )
+      }
       return streamOpenAiCompatible(config.baseUrl, config, system, messages, tools, maxTokens, cb)
     default:
       throw new Error(`Unknown provider: ${provider}`)

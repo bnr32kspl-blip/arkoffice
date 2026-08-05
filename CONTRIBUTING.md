@@ -95,8 +95,9 @@ testing and local overrides:
 | `ARKOFFICE_LANG`                                         | Force the UI language instead of following the OS locale               |
 | `ARKOFFICE_FAKE_UPDATE`                                  | Exercise the updater UI without a real release feed                    |
 | `ARKOFFICE_CLOUD_SLIDE`, `ARKOFFICE_CLOUD_SLIDE_TIER`    | Route slide generation through the cloud endpoint                      |
-| `GSK_API_KEY`, `GSK_CLI_PATH`                            | Genspark credentials / CLI location for the built-in AI provider       |
-| `AI_SEARCH_DISABLE_GSK`, `SERPER_API_KEY`                | Disable the gsk search backend / supply a Serper key instead           |
+| `ARKOFFICE_ALLOW_WEB_SEARCH`                             | Set to `1` to enable outbound web/image search (off by default)        |
+| `SERPER_API_KEY`                                         | Optional Serper key when web search is explicitly enabled              |
+| `GSK_API_KEY`, `GSK_CLI_PATH`                            | Optional legacy Genspark CLI (not required for local LLM)              |
 | `XLSX_SIDECAR_PATH`, `XLSX_OPEN_PATH`, `XLSX_DEBUG_PORT` | Point at a locally built xlsx sidecar and its debug port               |
 | `*_DEV_PORT`, `*_RENDERER_URL`                           | Per-app Vite dev server ports and renderer URLs (set by `npm run dev`) |
 

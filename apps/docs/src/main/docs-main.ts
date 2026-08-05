@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+﻿import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
@@ -45,10 +45,6 @@ import {
   type LegacyAiSettings,
 } from '@arkoffice/ai-provider'
 import {
-  gskApiKey,
-  gskLogin,
-  gskLoginInfo,
-  hasGskAuth,
   webSearch,
   imageSearch,
 } from '@arkoffice/ai-search'
@@ -2476,25 +2472,17 @@ const activeAiStreams = new Map<string, AbortController>()
 export function registerAiIpc(): void {
   ipcMain.handle('ai:get-settings', (): AiSettings => {
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
-    const settings = resolveAiSettings(stored, defaultAiSettings())
-    // AI features all go through Genspark (gsk login); legacy settings with another provider are reset
-    settings.provider = 'genspark'
-    return settings
+    return resolveAiSettings(stored, defaultAiSettings())
   })
 
-  // Genspark account (gsk login state): auth source for AI features; the frontend uses it to prompt login when logged out
+  // Optional legacy channel; ArkOffice AI does not require Genspark login
   ipcMain.handle(
     'ai:gsk-status',
-    async (_event, withEmail?: boolean): Promise<GenSparkAccountStatus> => {
-      if (!hasGskAuth()) return { loggedIn: false }
-      if (!withEmail) return { loggedIn: true }
-      const info = await gskLoginInfo()
-      return info?.email ? { loggedIn: true, email: info.email } : { loggedIn: true }
-    },
+    async (): Promise<GenSparkAccountStatus> => ({ loggedIn: false }),
   )
 
   ipcMain.handle('ai:gsk-login', () => {
-    gskLogin()
+    /* no-op: cloud Genspark auth removed from the product path */
   })
 
   ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {
@@ -2506,19 +2494,27 @@ export function registerAiIpc(): void {
     const tools = request.tools ?? []
     const maxTokens = request.maxTokens ?? 8192
     const provider = settings.provider
-    let config = settings.providers?.[provider]
-    // the genspark key never enters the settings file; requests take it from the gsk login state
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
+    const config = settings.providers?.[provider]
     const send = (chunk: AiStreamChunk) => {
       if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
     }
-    if (!config?.apiKey) {
+    if (!config) {
+      send({ requestId, type: 'error', error: tm('errNoApiKey', { provider }) })
+      return
+    }
+    if (provider !== 'local' && !config.apiKey) {
       send({
         requestId,
         type: 'error',
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
+        error: tm('errNoApiKey', { provider }),
+      })
+      return
+    }
+    if ((provider === 'local' || provider === 'custom') && !config.baseUrl) {
+      send({
+        requestId,
+        type: 'error',
+        error: 'Local/custom provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)',
       })
       return
     }
@@ -2617,14 +2613,17 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:chat', async (_event, request: AiChatRequest) => {
     const { settings, system, user } = request
     const provider = settings.provider
-    let config = settings.providers?.[provider]
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
+    const config = settings.providers?.[provider]
+    if (!config) {
+      return { ok: false, error: tm('errNoApiKey', { provider }) }
     }
-    if (!config?.apiKey) {
+    if (provider !== 'local' && !config.apiKey) {
+      return { ok: false, error: tm('errNoApiKey', { provider }) }
+    }
+    if ((provider === 'local' || provider === 'custom') && !config.baseUrl) {
       return {
         ok: false,
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
+        error: 'Local/custom provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)',
       }
     }
     if (!config.model) return { ok: false, error: tm('errNoModel') }

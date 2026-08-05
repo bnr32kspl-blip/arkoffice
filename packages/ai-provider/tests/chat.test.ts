@@ -101,38 +101,21 @@ describe('chatForProvider', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('genspark: routes by model prefix to the proxy endpoints', async () => {
+  it('local: routes to the configured OpenAI-compatible base URL', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse({ content: [{ type: 'text', text: 'ok' }] }))
+      .mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
     vi.stubGlobal('fetch', fetchMock)
-    await chatForProvider('genspark', { apiKey: 'gsk-k', model: 'claude-opus-4-7' }, 'sys', 'hi')
+    await chatForProvider(
+      'local',
+      { apiKey: '', model: 'local-model', baseUrl: 'http://127.0.0.1:8080/v1' },
+      'sys',
+      'hi',
+    )
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://www.genspark.ai/api/anthropic/v1/messages',
+      'http://127.0.0.1:8080/v1/chat/completions',
       expect.anything(),
     )
-    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
-    await chatForProvider('genspark', { apiKey: 'gsk-k', model: 'gpt-5.2' }, 'sys', 'hi')
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      'https://www.genspark.ai/api/llm_proxy/v1/chat/completions',
-      expect.anything(),
-    )
-  })
-
-  it('genspark: stamps X-Agent-Type; direct vendors do not get it', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(async () => jsonResponse({ content: [{ type: 'text', text: 'ok' }] }))
-    vi.stubGlobal('fetch', fetchMock)
-    await chatForProvider('genspark', { apiKey: 'gsk-k', model: 'claude-opus-4-7' }, 'sys', 'hi')
-    expect((fetchMock.mock.calls[0]![1].headers as Record<string, string>)['X-Agent-Type']).toBe(
-      'arkoffice',
-    )
-    fetchMock.mockClear()
-    await chatForProvider('anthropic', { apiKey: 'k', model: 'claude-opus-4-7' }, 'sys', 'hi')
-    expect(
-      (fetchMock.mock.calls[0]![1].headers as Record<string, string>)['X-Agent-Type'],
-    ).toBeUndefined()
   })
 
   it('treats an empty response body as an error', async () => {

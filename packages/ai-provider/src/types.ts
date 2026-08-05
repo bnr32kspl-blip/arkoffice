@@ -1,8 +1,17 @@
 import type { AgentMessage, AgentToolCall, AgentToolDef } from '@arkoffice/agent-core'
 
-export type AiProviderId = 'genspark' | 'anthropic' | 'gemini' | 'deepseek' | 'openai' | 'custom'
+export type AiProviderId =
+  | 'local'
+  | 'anthropic'
+  | 'gemini'
+  | 'deepseek'
+  | 'openai'
+  | 'custom'
 
-/** Genspark account status (gsk login state; the sole auth source for AI features) */
+/**
+ * @deprecated Kept for IPC compatibility while Genspark auth is being removed.
+ * Always treat as optional; ArkOffice does not require this for AI.
+ */
 export interface GenSparkAccountStatus {
   loggedIn: boolean
   email?: string
@@ -11,7 +20,7 @@ export interface GenSparkAccountStatus {
 export interface AiProviderConfig {
   apiKey: string
   model: string
-  /** only used by the custom (OpenAI-compatible) provider */
+  /** used by local and custom (OpenAI-compatible) providers */
   baseUrl?: string | undefined
 }
 

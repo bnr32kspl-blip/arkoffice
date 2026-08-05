@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+﻿import { createHash, randomUUID } from 'node:crypto'
 import {
   createReadStream,
   existsSync,
@@ -58,10 +58,6 @@ import {
 } from '@arkoffice/ai-provider'
 import { csvToXlsxBuffer, decodeCsvBuffer } from '../gateway/csv-import'
 import {
-  gskApiKey,
-  gskLogin,
-  gskLoginInfo,
-  hasGskAuth,
   webSearch,
   imageSearch,
 } from '@arkoffice/ai-search'
@@ -2016,27 +2012,17 @@ export function registerSheetsAiIpc(): void {
   ipcMain.handle(IPC_CHANNELS.aiGetSettings, (event): AiSettings => {
     sessionFor(event)
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
-    const settings = resolveAiSettings(stored, defaultAiSettings())
-    // AI features all go through Genspark (gsk login); legacy settings that chose
-    // another provider are reset
-    settings.provider = 'genspark'
-    return settings
+    return resolveAiSettings(stored, defaultAiSettings())
   })
 
-  // Genspark account (gsk login state): the auth source for AI features; the
-  // frontend uses it to guide sign-in when logged out
+  // Optional legacy channel; ArkOffice AI does not require Genspark login
   ipcMain.handle(
     IPC_CHANNELS.aiGskStatus,
-    async (_event, withEmail?: unknown): Promise<GenSparkAccountStatus> => {
-      if (!hasGskAuth()) return { loggedIn: false }
-      if (!withEmail) return { loggedIn: true }
-      const info = await gskLoginInfo()
-      return info?.email ? { loggedIn: true, email: info.email } : { loggedIn: true }
-    },
+    async (): Promise<GenSparkAccountStatus> => ({ loggedIn: false }),
   )
 
   ipcMain.handle(IPC_CHANNELS.aiGskLogin, () => {
-    gskLogin()
+    /* no-op: cloud Genspark auth removed from the product path */
   })
 
   ipcMain.handle(IPC_CHANNELS.aiSetSettings, (event, input: unknown) => {
@@ -2049,14 +2035,17 @@ export function registerSheetsAiIpc(): void {
     sessionFor(event)
     const request = aiChatRequestSchema.parse(input)
     const provider = request.settings.provider as AiProviderId
-    let config = request.settings.providers[provider]
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
+    const config = request.settings.providers[provider]
+    if (!config) {
+      return { ok: false, error: tm('errNoApiKey', { provider }) }
     }
-    if (!config?.apiKey) {
+    if (provider !== 'local' && !config.apiKey) {
+      return { ok: false, error: tm('errNoApiKey', { provider }) }
+    }
+    if ((provider === 'local' || provider === 'custom') && !config.baseUrl) {
       return {
         ok: false,
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
+        error: 'Local/custom provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)',
       }
     }
     if (!config.model) return { ok: false, error: tm('errNoModel') }
@@ -2074,20 +2063,27 @@ export function registerSheetsAiIpc(): void {
     const tools = request.tools ?? []
     const maxTokens = request.maxTokens ?? 8192
     const provider = request.settings.provider as AiProviderId
-    let config = request.settings.providers[provider]
-    // Genspark's key never enters the settings file; it is read from the gsk
-    // login state per request
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
+    const config = request.settings.providers[provider]
     const send = (chunk: AiStreamChunk) => {
       if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.aiStreamChunk, chunk)
     }
-    if (!config?.apiKey) {
+    if (!config) {
+      send({ requestId, type: 'error', error: tm('errNoApiKey', { provider }) })
+      return
+    }
+    if (provider !== 'local' && !config.apiKey) {
       send({
         requestId,
         type: 'error',
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
+        error: tm('errNoApiKey', { provider }),
+      })
+      return
+    }
+    if ((provider === 'local' || provider === 'custom') && !config.baseUrl) {
+      send({
+        requestId,
+        type: 'error',
+        error: 'Local/custom provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)',
       })
       return
     }

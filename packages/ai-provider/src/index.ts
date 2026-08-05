@@ -12,7 +12,7 @@ export type {
 } from './types'
 export {
   AI_PROVIDERS,
-  GENSPARK_LLM_BASE_URLS,
+  LOCAL_LLM_DEFAULT_BASE_URL,
   defaultAiSettings,
   resolveAiSettings,
 } from './providers'

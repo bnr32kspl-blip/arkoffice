@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI IPC for the slides main process, extracted from slides-main.ts:
  * settings persistence, the streaming proxy (main process does the networking
  * to avoid renderer CORS), search tools, and the slides-only ai:* channels
@@ -23,11 +23,8 @@ import { fetchWithSsrfGuard } from '@arkoffice/electron-utils'
 import {
   webSearch,
   imageSearch,
-  gskApiKey,
   gskGenerateImage,
   gskAnalyzeMedia,
-  gskLogin,
-  gskLoginInfo,
   hasGskAuth,
 } from '@arkoffice/ai-search'
 import { addPicture } from '@arkoffice/pptx-engine'
@@ -59,24 +56,17 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:get-settings', (): AiSettings => {
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(AI_SETTINGS_PATH(), {})
     const settings = resolveAiSettings(stored, defaultAiSettings())
-    // AI features all go through Genspark (gsk login); stored settings that chose another provider are normalized back
-    settings.provider = 'genspark'
     return settings
   })
 
-  // Genspark account (gsk login state): the auth source for AI features; when logged out the frontend uses this to guide login
+  // Optional legacy channel; ArkOffice AI does not require Genspark login
   ipcMain.handle(
     'ai:gsk-status',
-    async (_event, withEmail?: boolean): Promise<GenSparkAccountStatus> => {
-      if (!hasGskAuth()) return { loggedIn: false }
-      if (!withEmail) return { loggedIn: true }
-      const info = await gskLoginInfo()
-      return info?.email ? { loggedIn: true, email: info.email } : { loggedIn: true }
-    },
+    async (): Promise<GenSparkAccountStatus> => ({ loggedIn: false }),
   )
 
   ipcMain.handle('ai:gsk-login', () => {
-    gskLogin()
+    /* no-op: cloud Genspark auth removed from the product path */
   })
 
   ipcMain.handle('ai:set-settings', (_event, settings: AiSettings) => {
@@ -88,19 +78,27 @@ export function registerAiIpc(): void {
     const tools = request.tools ?? []
     const maxTokens = request.maxTokens ?? 8192
     const provider = settings.provider
-    let config = settings.providers?.[provider]
-    // The genspark key never enters the settings file; it is fetched from the gsk login state per request
-    if (provider === 'genspark' && config && !config.apiKey) {
-      config = { ...config, apiKey: gskApiKey() }
-    }
+    const config = settings.providers?.[provider]
     const send = (chunk: AiStreamChunk) => {
       if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
     }
-    if (!config?.apiKey) {
+    if (!config) {
+      send({ requestId, type: 'error', error: tm('errNoApiKey', { provider }) })
+      return
+    }
+    if (provider !== 'local' && !config.apiKey) {
       send({
         requestId,
         type: 'error',
-        error: provider === 'genspark' ? tm('errGskNotLoggedIn') : tm('errNoApiKey', { provider }),
+        error: tm('errNoApiKey', { provider }),
+      })
+      return
+    }
+    if ((provider === 'local' || provider === 'custom') && !config.baseUrl) {
+      send({
+        requestId,
+        type: 'error',
+        error: 'Local/custom provider requires a Base URL (e.g. http://127.0.0.1:8080/v1)',
       })
       return
     }

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { AI_PROVIDERS, defaultAiSettings, resolveAiSettings } from '../src/providers'
+import {
+  AI_PROVIDERS,
+  LOCAL_LLM_DEFAULT_BASE_URL,
+  defaultAiSettings,
+  resolveAiSettings,
+} from '../src/providers'
 
 describe('defaultAiSettings', () => {
-  it('gives every provider its default model and an empty key by default', () => {
+  it('defaults to the local llama.cpp provider', () => {
     const settings = defaultAiSettings()
-    expect(settings.provider).toBe('genspark')
+    expect(settings.provider).toBe('local')
+    expect(settings.providers.local.baseUrl).toBe(LOCAL_LLM_DEFAULT_BASE_URL)
     for (const meta of AI_PROVIDERS) {
       expect(settings.providers[meta.id].apiKey).toBe('')
       expect(settings.providers[meta.id].model).toBe(meta.defaultModel)
@@ -37,7 +43,6 @@ describe('resolveAiSettings', () => {
       model: 'legacy-model',
       baseUrl: 'https://legacy.example.com/v1',
     })
-    // untouched providers keep their defaults
     expect(resolved.providers.anthropic).toEqual(defaults.providers.anthropic)
   })
 
@@ -58,8 +63,25 @@ describe('resolveAiSettings', () => {
       defaults,
     )
     expect(resolved.provider).toBe('gemini')
-    expect(resolved.providers.gemini).toEqual({ apiKey: 'stored-gemini-key', model: 'gemini-2.5-pro' })
-    // provider not mentioned in stored.providers keeps the computed default
+    expect(resolved.providers.gemini).toEqual({
+      apiKey: 'stored-gemini-key',
+      model: 'gemini-2.5-pro',
+    })
     expect(resolved.providers.anthropic.apiKey).toBe('preset-key')
+  })
+
+  it('migrates legacy genspark provider selection to local', () => {
+    const defaults = defaultAiSettings()
+    const resolved = resolveAiSettings(
+      {
+        provider: 'genspark',
+        providers: {
+          genspark: { apiKey: '', model: 'claude-opus-4-7' },
+        } as never,
+      },
+      defaults,
+    )
+    expect(resolved.provider).toBe('local')
+    expect((resolved.providers as Record<string, unknown>).genspark).toBeUndefined()
   })
 })

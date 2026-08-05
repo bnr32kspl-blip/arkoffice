@@ -4,6 +4,7 @@ import { webSearch, imageSearch } from '../src/index'
 // These cases only test the Serper/DuckDuckGo paths; a local gsk login would take priority, so disable it explicitly
 beforeAll(() => {
   process.env.AI_SEARCH_DISABLE_GSK = '1'
+  process.env.ARKOFFICE_ALLOW_WEB_SEARCH = '1'
 })
 
 const realFetch = globalThis.fetch

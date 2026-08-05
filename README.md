@@ -4,7 +4,7 @@
 
 [genspark-ai/genoffice](https://github.com/genspark-ai/genoffice)（Apache License 2.0）をベースにフォークし、商標の分離・エンタープライズディレクトリ除外・ローカル LLM 前提の改修を行います。
 
-> **実装状況:** Phase 1–2 完了。次は Phase 3（ローカル LLM 既定化 / Genspark 依存除去）。  
+> **実装状況:** Phase 1–3 完了。次は Phase 4（オートアップデート既定 OFF）。  
 > 進捗の可視化は Cursor Canvas「ArkOffice 実装状況」と、下表「実装結果」を更新していきます。
 
 ---
@@ -84,7 +84,7 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 |-------|------|------|
 | 1 | `ee/` 完全除外（削除・履歴除去・CI ガード） | **完了** |
 | 2 | ArkOffice リブランディング（名称・アイコン・appId・商標スキャン） | **完了** |
-| 3 | ローカル LLM 既定化（llama.cpp / OpenAI 互換）+ Genspark 依存除去。クラウド OpenAI 互換は維持 | 未着手 |
+| 3 | ローカル LLM 既定化（llama.cpp / OpenAI 互換）+ Genspark 依存除去。クラウド OpenAI 互換は維持 | **完了** |
 | 4 | オートアップデート既定 OFF | 未着手 |
 | 5 | 閉域検証・署名付き配布・運用手順 | 未着手 |
 
@@ -92,13 +92,20 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 
 ## 実装結果
 
+### 2026-08-05 — Phase 3
+
+- AI 既定プロバイダを **local（llama.cpp / OpenAI 互換、`http://127.0.0.1:8080/v1`）** に変更
+- Genspark プロバイダと製品パス上の強制ログインを除去（クラウドは OpenAI / Claude / Gemini / DeepSeek / Custom を維持）
+- Web/画像検索は **既定 OFF**（`ARKOFFICE_ALLOW_WEB_SEARCH=1` で有効化）
+- `@genspark/cli` を optionalDependencies 化し、electron-builder 同梱も存在時のみ
+- `ai-provider` / `ai-search` / `agent-core` テスト通過
+
 ### 2026-08-05 — Phase 2
 
 - 製品識別子を **ArkOffice** に置換（`@arkoffice/*`、`com.arkoffice.app`、`ARKOFFICE_*`、`productName`）
 - シェルアプリアイコン（`icon.png` / `icon-mac.png` / `icon.ico` / `icon.icns`）を新規デザインで置換
 - `NOTICE` は Apache 帰属を維持しつつ製品名を ArkOffice（derived from GenOffice）に更新
 - `npm run check:trademarks` と CI `license-boundary` に商標ゲートを追加
-- Genspark クラウド AI 経路の除去は **Phase 3** で実施（現時点ではコード上に残存）
 
 ### 2026-08-05 — Phase 1
 
@@ -131,6 +138,13 @@ upstream 由来の著作権表示（Mainfunc, Inc. / GenOffice の NOTICE 等）
 ```bash
 npm run check:no-ee
 npm run check:trademarks
+```
+
+ローカル LLM（例）:
+
+```bash
+llama-server -m model.gguf --port 8080
+# ArkOffice Settings → Local (llama.cpp) → Base URL http://127.0.0.1:8080/v1 + model id
 ```
 
 ---

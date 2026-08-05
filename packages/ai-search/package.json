@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
+  "dependencies": {},
+  "optionalDependencies": {
     "@genspark/cli": "^1.4.2"
   },
   "devDependencies": {

@@ -1,9 +1,7 @@
 /**
- * Search utilities (main process) — gsk (Genspark CLI) first, then Serper Google API,
- * with DuckDuckGo as the last resort. The Serper/DuckDuckGo logic mirrors an earlier
- * web_search / google_image_search implementation. Runs in the main process
- * (Node fetch / child process) to avoid renderer CORS; the Serper key reuses SERPER_API_KEY.
- * For gsk auth see ./gsk.ts (`gsk login` or GSK_API_KEY).
+ * Search utilities (main process). Outbound web/image search is disabled by
+ * default for air-gapped deployments. Set ARKOFFICE_ALLOW_WEB_SEARCH=1 to
+ * enable Serper / DuckDuckGo (and optional Genspark CLI if installed).
  */
 
 import {
@@ -20,6 +18,11 @@ export * from './gsk'
 
 const SERPER_KEY = () => process.env.SERPER_API_KEY ?? ''
 
+/** Closed-network default: no outbound search unless explicitly enabled. */
+export function isWebSearchEnabled(): boolean {
+  return process.env.ARKOFFICE_ALLOW_WEB_SEARCH === '1'
+}
+
 // ── Web search ──────────────────────────────────────────────────────
 
 export async function webSearch(query: string, maxResults = 6): Promise<{
@@ -27,6 +30,9 @@ export async function webSearch(query: string, maxResults = 6): Promise<{
   answer?: string
   method: string
 }> {
+  if (!isWebSearchEnabled()) {
+    return { results: [], method: 'disabled' }
+  }
   if (hasGskAuth()) {
     try {
       const r = await gskWebSearch(query, maxResults)
@@ -77,6 +83,9 @@ export async function imageSearch(query: string, maxResults = 8): Promise<{
   images: ImageSearchResult[]
   method: string
 }> {
+  if (!isWebSearchEnabled()) {
+    return { images: [], method: 'disabled' }
+  }
   if (hasGskAuth()) {
     try {
       const images = await gskImageSearch(query, maxResults)
