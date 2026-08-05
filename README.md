@@ -94,10 +94,10 @@ llama.cpp の採用理由: ランタイムを施設内で完結させやすく�
 
 ### 2026-08-05 — Phase 5
 
-- 運用ドキュメント追加: [`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md)、[`docs/network-allowlist.md`](docs/network-allowlist.md)、[`docs/verification-checklist.md`](docs/verification-checklist.md)
+- 運用ドキュメント追加（日本語）: [`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md)、[`docs/network-allowlist.md`](docs/network-allowlist.md)、[`docs/verification-checklist.md`](docs/verification-checklist.md)
 - 設定例: [`docs/examples/`](docs/examples/)
 - `npm run check:airgap`（既定 AI / 検索 OFF / 更新 OFF / ドキュメント有無を検証）を CI `license-boundary` に追加
-- `SECURITY.md` を閉域・ローカル LLM 既定に合わせて更新
+- `SECURITY.md` を閉域・ローカル LLM 既定に合わせて更新（日本語）
 - sheets のプロキシプローブ URL を製品中立な `https://arkoffice.local` に変更
 - **組織のコード署名証明書**による本番署名ビルドは、証明書入手後に実行（手順は閉域デプロイ文書を参照）
 
@@ -157,11 +157,12 @@ npm run check:trademarks
 npm run check:airgap
 ```
 
-閉域運用の詳細:
+閉域運用の詳細（日本語）:
 
-- [Air-gapped deployment](docs/air-gapped-deployment.md)
-- [Network allowlist](docs/network-allowlist.md)
-- [Verification checklist](docs/verification-checklist.md)
+- [閉域網・制限ネットワーク向け展開手順](docs/air-gapped-deployment.md)
+- [ネットワーク許可リスト](docs/network-allowlist.md)
+- [閉域網向け検証チェックリスト](docs/verification-checklist.md)
+- [セキュリティポリシー](SECURITY.md)
 
 ローカル LLM（例）:
 

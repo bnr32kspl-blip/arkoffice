@@ -1,103 +1,53 @@
-# Security Policy
+# セキュリティポリシー
 
-## Reporting a Vulnerability
+## 脆弱性の報告
 
-Please report suspected vulnerabilities privately to the ArkOffice maintainers
-(security contact will be published with the public repository). Do not open
-public issues for security reports. We aim to acknowledge reports within 72 hours.
+疑わしい脆弱性は、公開 Issue ではなく ArkOffice メンテナーへ非公開で報告してください（連絡先はリポジトリ公開時に掲載予定）。セキュリティ報告は公開 Issue にしないでください。原則 72 時間以内に受領を返信します。
 
-## Closed-network posture
+## 閉域網向けの姿勢
 
-ArkOffice targets air-gapped and restricted networks (for example municipal and
-hospital endpoints). Shipping defaults:
+ArkOffice は、閉域網および制限ネットワーク（例: 自治体・医療機関の端末）を想定しています。出荷時の既定は次のとおりです。
 
-- AI uses a **local** OpenAI-compatible endpoint (`http://127.0.0.1:8080/v1`) —
-  typically llama.cpp `llama-server` — not a vendor cloud account.
-- Outbound web/image search is **off** unless `ARKOFFICE_ALLOW_WEB_SEARCH=1`.
-- Auto-update checks are **off** unless `ARKOFFICE_AUTO_UPDATE=1` or
-  `userData/update-preferences.json` sets `"enabled": true`.
-- The upstream `ee/` tree (Enterprise License) is not present in this repository.
+- AI は **ローカル** の OpenAI 互換エンドポイント（`http://127.0.0.1:8080/v1`）を使用します。通常は llama.cpp の `llama-server` であり、ベンダーのクラウドアカウントではありません。
+- 外向きの Web / 画像検索は、`ARKOFFICE_ALLOW_WEB_SEARCH=1` を設定しない限り **OFF** です。
+- 自動更新チェックは、`ARKOFFICE_AUTO_UPDATE=1`、または `userData/update-preferences.json` で `"enabled": true` としない限り **OFF** です。
+- upstream の `ee/` ツリー（Enterprise License）は本リポジトリに含まれません。
 
-Document content and AI prompts leave the machine only toward the AI base URL
-the administrator configures (localhost or an approved intranet gateway). See
-[`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md) and
-[`docs/network-allowlist.md`](docs/network-allowlist.md).
+文書内容と AI プロンプトが端末外へ出るのは、管理者が設定した AI の base URL（localhost または承認済みイントラネットゲートウェイ）に限られます。詳細は [`docs/air-gapped-deployment.md`](docs/air-gapped-deployment.md) および [`docs/network-allowlist.md`](docs/network-allowlist.md) を参照してください。
 
-## Process Security Posture
+## プロセスのセキュリティ姿勢
 
-All application windows run with the full Electron renderer lockdown:
+すべてのアプリケーションウィンドウで Electron レンダラのロックダウンを適用しています。
 
-- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` for every
-  document window and tab view (docs, sheets, slides, pdf, shell, updater).
-- Renderers reach the main process only through typed, validated IPC channels
-  (payloads are schema-checked in the main process; sheets uses zod end to end).
-- Every `shell.openExternal` call goes through a single shared gate
-  (`@arkoffice/electron-utils` → `safeExternalUrl`) that parses the URL and
-  enforces a protocol allowlist (http/https; pdf link annotations additionally
-  allow mailto). `file:`, `javascript:`, and custom schemes are always rejected.
-- No API keys are hardcoded. Cloud provider keys, when used, stay in the
-  OS-level / userData settings store. Local LLM keys may be empty.
+- 文書ウィンドウおよびタブビュー（docs / sheets / slides / pdf / shell / updater）すべてで `contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`
+- レンダラからメインプロセスへの到達は、型付き・検証済みの IPC チャネルのみ（ペイロードはメインプロセスでスキーマ検証。sheets は end-to-end で zod）
+- `shell.openExternal` は共有ゲート（`@arkoffice/electron-utils` → `safeExternalUrl`）経由のみ。URL をパースし、プロトコル許可リスト（http/https。PDF リンク注釈では mailto も可）を強制。`file:`、`javascript:`、独自スキームは常に拒否
+- API キーのハードコードなし。クラウド用キー（使用時）は OS レベル / userData の設定ストアに保持。ローカル LLM のキーは空でも可
 
-## Threat Model: AI-Generated Layout Scripts (slides)
+## 脅威モデル: AI 生成レイアウトスクリプト（slides）
 
-The slides AI can adjust slide layouts by emitting a small script that is
-parsed with Acorn and evaluated by a constrained AST interpreter
-(`apps/slides/src/renderer/ai/layout-script-interpreter.ts`). The source looks
-like a small, synchronous subset of JavaScript for model compatibility, but it
-is not passed to `eval`, `Function`, a VM context, a worker, or the JavaScript
-engine as executable source.
+slides の AI は、レイアウト調整用の小さなスクリプトを出力します。これは Acorn でパースされ、制約付き AST インタプリタ（`apps/slides/src/renderer/ai/layout-script-interpreter.ts`）で評価されます。見た目はモデル互換のための小さな同期的 JavaScript サブセットですが、`eval`、`Function`、VM コンテキスト、ワーカー、あるいは JavaScript エンジンへの実行ソースとしては渡しません。
 
-**What the script can do by design:** read prototype-free JSON copies of
-`els`/`canvas`, perform bounded arithmetic/control flow, use explicitly
-implemented string/array/regular-expression/Math helpers, and call
-`setBox/moveBy/resizeBy/setText/setStyle/setFill/setStroke/log`. Every edit
-primitive validates its arguments (element existence, read-only flags, finite
-numbers, hex colors) and writes only into an op buffer that is applied through
-the same command pipeline as manual edits.
+**設計上スクリプトができること:** `els` / `canvas` のプロトタイプ無し JSON コピーの読み取り、有界な算術・制御フロー、明示実装の string / array / 正規表現 / Math ヘルパー、および `setBox` / `moveBy` / `resizeBy` / `setText` / `setStyle` / `setFill` / `setStroke` / `log` の呼び出し。各編集プリミティブは引数を検証し（要素の存在、読み取り専用フラグ、有限数、16 進カラー）、手動編集と同じコマンドパイプライン経由で適用される op バッファにのみ書き込みます。
 
-**Interpreter boundary:**
+**インタプリタ境界:**
 
-1. Identifiers resolve only in interpreter-owned lexical scopes seeded with the
-   documented data and callables. There are no ambient globals, module loader,
-   DOM, network, IPC bridge, timers, process APIs, or dynamic code primitives.
-2. Property reads are dispatched by value type. Data objects expose own JSON
-   fields only; arrays, strings, and regexes expose a small method allowlist.
-   Host prototypes and function properties are never traversed, including
-   through computed property names.
-3. Calls accept only interpreter-created functions or explicit builtins. A host
-   function obtained through a constructor/prototype chain cannot be
-   represented.
-4. Inputs and values crossing into edit primitives are recursively copied as
-   JSON-like, prototype-free data. Errors discard all buffered operations;
-   logs are capped.
-5. Execution has statement/expression and call-depth limits to bound runaway
-   loops or recursion.
+1. 識別子は、文書化されたデータと呼び出し可能オブジェクトで初期化されたインタプリタ固有のレキシカルスコープでのみ解決されます。環境グローバル、モジュールローダ、DOM、ネットワーク、IPC ブリッジ、タイマー、process API、動的コード原語はありません。
+2. プロパティ読み取りは値の型でディスパッチされます。データオブジェクトは自前の JSON フィールドのみ。配列・文字列・正規表現は小さなメソッド許可リストのみ。ホストのプロトタイプや関数プロパティは、計算プロパティ名経由でも辿りません。
+3. 呼び出しはインタプリタが生成した関数、または明示的な組み込みのみ。コンストラクタ／プロトタイプ鎖から得たホスト関数は表現できません。
+4. 編集プリミティブに渡る入出力は、JSON ライクでプロトタイプ無しのデータとして再帰コピーされます。エラー時はバッファ済み操作をすべて破棄し、ログは上限付きです。
+5. 文／式および呼び出し深さに上限があり、暴走ループや再帰を抑制します。
 
-The Electron renderer sandbox remains defense in depth, but it is not the
-layout-script security boundary. The interpreter is designed so a layout
-script cannot obtain renderer capabilities in the first place.
+Electron レンダラのサンドボックスは多層防御として残りますが、レイアウトスクリプトのセキュリティ境界ではありません。インタプリタは、レイアウトスクリプトがそもそもレンダラ能力を取得できないよう設計されています。
 
-If you find a way for a layout script to reach anything beyond the injected
-primitives (network, storage, IPC channels not reachable by design, or the
-main process), that is a vulnerability — please report it.
+注入されたプリミティブ以外（ネットワーク、ストレージ、設計上到達不能な IPC、メインプロセス）へレイアウトスクリプトから到達できる場合は脆弱性です。報告してください。
 
-## Threat Model: Rendering AI-Generated HTML (slides export)
+## 脅威モデル: AI 生成 HTML の描画（slides エクスポート）
 
-The HTML-to-pptx export pipeline renders AI-generated HTML in a hidden
-`BrowserWindow`. That window is treated as hostile content: full renderer
-lockdown (`sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`),
-no preload script, no IPC surface — the main process drives it exclusively
-through `executeJavaScript` and destroys it under a watchdog timeout.
+HTML から pptx へのエクスポートパイプラインは、非表示の `BrowserWindow` で AI 生成 HTML を描画します。当該ウィンドウは敵対コンテンツとして扱い、レンダラロックダウン一式（`sandbox: true`、`contextIsolation: true`、`nodeIntegration: false`）、preload 無し、IPC 面無しとします。メインプロセスが `executeJavaScript` のみで駆動し、ウォッチドッグタイムアウトで破棄します。
 
-## Out of Scope
+## 対象外
 
-- Optional cloud AI providers the operator explicitly configures are operated
-  by those vendors; issues with them should be reported through the provider's
-  channels.
-- Vulnerabilities that require an already-compromised machine or a modified
-  binary. This includes deliberate environment-variable override points for
-  local development (`GSK_CLI_PATH`, `XLSX_SIDECAR_PATH`,
-  `ARKOFFICE_USER_DATA`): setting them requires control of the process
-  environment, which is equivalent to code execution on the machine.
-- Hyperlinks opened in the system browser after a user click (subject to OS and
-  proxy policy).
+- 運用者が明示設定した任意のクラウド AI プロバイダは各ベンダーの運用です。問題はそのプロバイダの窓口へ報告してください。
+- すでに侵害された端末、または改変済みバイナリを前提とする脆弱性。ローカル開発用の環境変数上書き（`GSK_CLI_PATH`、`XLSX_SIDECAR_PATH`、`ARKOFFICE_USER_DATA`）もこれに含みます。設定にはプロセス環境の制御が必要であり、端末上のコード実行と同等です。
+- ユーザーがクリックした後、システムブラウザで開かれるハイパーリンク（OS およびプロキシポリシーの対象）。

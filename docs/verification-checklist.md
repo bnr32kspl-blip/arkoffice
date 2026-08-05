@@ -1,46 +1,46 @@
-# Closed-network verification checklist
+# 閉域網向け検証チェックリスト
 
-Use this before handing ArkOffice to a municipality / hospital pilot.
+自治体・医療機関などへのパイロット配布前に、本リストで確認してください。
 
-## Build / license boundary
+## ビルド / ライセンス境界
 
-- [ ] `npm run check:no-ee` passes (no `ee/` tree)
-- [ ] `npm run check:trademarks` passes
-- [ ] `npm run check:airgap` passes
-- [ ] Root `LICENSE` is Apache-2.0; `NOTICE` retains upstream attribution
-- [ ] Installer product name / About UI shows **ArkOffice** only (no upstream product branding)
+- [ ] `npm run check:no-ee` が成功する（`ee/` ツリー無し）
+- [ ] `npm run check:trademarks` が成功する
+- [ ] `npm run check:airgap` が成功する
+- [ ] ルートの `LICENSE` が Apache-2.0 であり、`NOTICE` に upstream 帰属が残っている
+- [ ] インストーラの製品名・About UI が **ArkOffice** のみを表示する（upstream 製品ブランド無し）
 
-## Offline install
+## オフラインインストール
 
-- [ ] Installer transferred via approved offline media (no CDN fetch at install time)
-- [ ] App launches with network adapter disabled or firewall deny-outbound
-- [ ] Docs / Sheets / Slides / PDF open and save sample files without network
-- [ ] Bundled fonts render without downloading fonts from the Internet
+- [ ] 承認済みオフライン媒体でインストーラを移送した（インストール時の CDN 取得無し）
+- [ ] ネットワークアダプタ無効、または外向き拒否のファイアウォール下でアプリが起動する
+- [ ] Docs / Sheets / Slides / PDF がネットワーク無しでサンプルファイルを開閉・保存できる
+- [ ] 同梱フォントがインターネットからフォントを取得せずに表示される
 
-## AI (local)
+## AI（ローカル）
 
-- [ ] `llama-server` (or approved intranet OpenAI-compatible endpoint) is running
-- [ ] AI settings provider is **Local (llama.cpp)** with the site base URL
-- [ ] A short Docs AI edit succeeds while Internet is blocked
-- [ ] With LLM stopped, AI fails with a clear connection error (no silent cloud fallback)
+- [ ] `llama-server`（または承認済みイントラネットの OpenAI 互換エンドポイント）が稼働している
+- [ ] AI 設定のプロバイダが **Local (llama.cpp)** で、拠点の base URL になっている
+- [ ] インターネット遮断下で Docs の短い AI 編集が成功する
+- [ ] LLM 停止時は明確な接続エラーになり、クラウドへの無言フォールバックが無い
 
-## Features that must stay off unless approved
+## 承認なしでは OFF のままにすべき機能
 
-- [ ] Auto-update does **not** contact any host (`ARKOFFICE_AUTO_UPDATE` unset / preferences disabled)
-- [ ] Web search tools return disabled / empty without `ARKOFFICE_ALLOW_WEB_SEARCH=1`
-- [ ] No third-party SaaS sign-in is required to use AI
+- [ ] 自動更新がどのホストにも接続しない（`ARKOFFICE_AUTO_UPDATE` 未設定 / 設定で無効）
+- [ ] `ARKOFFICE_ALLOW_WEB_SEARCH=1` 無しでは Web 検索ツールが無効 / 空を返す
+- [ ] AI 利用に第三者 SaaS へのサインインが不要
 
-## Security / ops
+## セキュリティ / 運用
 
-- [ ] Code signing uses the deploying organization’s certificates (or risk accepted)
-- [ ] Network allowlist reviewed: [`network-allowlist.md`](network-allowlist.md)
-- [ ] Deployment runbook reviewed: [`air-gapped-deployment.md`](air-gapped-deployment.md)
-- [ ] Sample org settings (if used) match site policy under `docs/examples/`
+- [ ] コード署名に展開組織の証明書を使用している（またはリスクを受容している）
+- [ ] ネットワーク許可リストを確認した: [`network-allowlist.md`](network-allowlist.md)
+- [ ] 展開手順書を確認した: [`air-gapped-deployment.md`](air-gapped-deployment.md)
+- [ ] 利用する組織設定サンプル（ある場合）が `docs/examples/` の内容と拠点ポリシーに一致する
 
-## Sign-off
+## 承認サインオフ
 
-| Role | Name | Date | Result |
-| ---- | ---- | ---- | ------ |
-| Engineering |  |  |  |
-| Security / InfoSec |  |  |  |
-| Business owner |  |  |  |
+| 役割 | 氏名 | 日付 | 結果 |
+| ---- | ---- | ---- | ---- |
+| エンジニアリング |  |  |  |
+| セキュリティ / 情報システム |  |  |  |
+| 業務オーナー |  |  |  |

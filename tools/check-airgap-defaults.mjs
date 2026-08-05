@@ -82,6 +82,7 @@ for (const rel of [
   'docs/verification-checklist.md',
   'docs/examples/ai-settings.local.example.json',
   'docs/examples/update-preferences.disabled.json',
+  'docs/examples/README.md',
 ]) {
   if (!existsSync(join(root, rel))) fail(`missing ${rel}`)
   else ok(`present ${rel}`)
