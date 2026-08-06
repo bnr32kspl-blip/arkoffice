@@ -164,15 +164,13 @@ export function AiPanel({
   const runStartedAtRef = useRef(0)
   const [chat, setChat] = useState<ChatEntry[]>([])
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
-  const [trackChanges, setTrackChanges] = useState(
-    () => {
-      try {
-        return globalThis.localStorage?.getItem(TRACK_CHANGES_KEY) === '1'
-      } catch {
-        return false
-      }
-    },
-  )
+  const [trackChanges, setTrackChanges] = useState(() => {
+    try {
+      return globalThis.localStorage?.getItem(TRACK_CHANGES_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
   const [attachNotice, setAttachNotice] = useState<string | null>(null)
