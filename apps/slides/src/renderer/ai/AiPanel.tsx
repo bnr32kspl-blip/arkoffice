@@ -218,8 +218,12 @@ function clampPanelWidth(w: number): number {
 }
 
 function loadPanelWidth(): number {
-  const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY))
-  return Number.isFinite(saved) && saved > 0 ? clampPanelWidth(saved) : PANEL_WIDTH_DEFAULT
+  try {
+    const saved = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
+    return Number.isFinite(saved) && saved > 0 ? clampPanelWidth(saved) : PANEL_WIDTH_DEFAULT
+  } catch {
+    return PANEL_WIDTH_DEFAULT
+  }
 }
 
 export function AiPanel({
@@ -430,10 +434,10 @@ export function AiPanel({
 
   useEffect(() => {
     let alive = true
-    void window.slidesApi.cloudFeaturesEnabled?.().then((on) => {
+    void window.slidesApi?.cloudFeaturesEnabled?.().then((on) => {
       if (alive) cloudFeaturesRef.current = on
     })
-    const unsub = window.slidesApi.onCloudFeaturesChanged?.((on) => {
+    const unsub = window.slidesApi?.onCloudFeaturesChanged?.((on) => {
       cloudFeaturesRef.current = on
     })
     return () => {

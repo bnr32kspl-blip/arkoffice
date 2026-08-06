@@ -365,15 +365,16 @@ describe('replaceAllText', () => {
 
   it('matchCase: sensitive by default, insensitive when false', () => {
     const editor = createEditor(fixtureDoc())
+    // Fixture text is lowercase "arkoffice"; a differently-cased needle must miss when matchCase is default.
     const strict = executeCommands(editor, {
-      commands: [{ replaceAllText: { containsText: 'arkoffice', replaceText: 'X' } }],
+      commands: [{ replaceAllText: { containsText: 'ArkOffice', replaceText: 'X' } }],
     })
     expect(strict.results[0].changed).toBe(0)
     expect(editor.state.doc.child(1).textContent).toContain('arkoffice')
 
     const loose = executeCommands(editor, {
       commands: [
-        { replaceAllText: { containsText: 'arkoffice', replaceText: 'X', matchCase: false } },
+        { replaceAllText: { containsText: 'ArkOffice', replaceText: 'X', matchCase: false } },
       ],
     })
     expect(loose.results[0].detail).toBe('共替换 2 处')

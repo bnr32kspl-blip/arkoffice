@@ -557,10 +557,10 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     let alive = true
-    void window.desktopApi.cloudFeaturesEnabled?.().then((on) => {
+    void window.desktopApi?.cloudFeaturesEnabled?.().then((on) => {
       if (alive) cloudFeaturesRef.current = on
     })
-    const unsub = window.desktopApi.onCloudFeaturesChanged?.((on) => {
+    const unsub = window.desktopApi?.onCloudFeaturesChanged?.((on) => {
       cloudFeaturesRef.current = on
     })
     return () => {

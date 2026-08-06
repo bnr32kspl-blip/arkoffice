@@ -103,8 +103,12 @@ function clampPanelWidth(w: number): number {
 }
 
 function loadPanelWidth(): number {
-  const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY))
-  return Number.isFinite(saved) && saved > 0 ? clampPanelWidth(saved) : PANEL_WIDTH_DEFAULT
+  try {
+    const saved = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY))
+    return Number.isFinite(saved) && saved > 0 ? clampPanelWidth(saved) : PANEL_WIDTH_DEFAULT
+  } catch {
+    return PANEL_WIDTH_DEFAULT
+  }
 }
 
 /** persisted UI preference: highlight AI edits in yellow and ask for confirmation */
@@ -161,7 +165,13 @@ export function AiPanel({
   const [chat, setChat] = useState<ChatEntry[]>([])
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [trackChanges, setTrackChanges] = useState(
-    () => localStorage.getItem(TRACK_CHANGES_KEY) === '1',
+    () => {
+      try {
+        return globalThis.localStorage?.getItem(TRACK_CHANGES_KEY) === '1'
+      } catch {
+        return false
+      }
+    },
   )
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([])
@@ -213,10 +223,10 @@ export function AiPanel({
 
   useEffect(() => {
     let alive = true
-    void window.desktop.cloudFeaturesEnabled?.().then((on) => {
+    void window.desktop?.cloudFeaturesEnabled?.().then((on) => {
       if (alive) cloudFeaturesRef.current = on
     })
-    const unsub = window.desktop.onCloudFeaturesChanged?.((on) => {
+    const unsub = window.desktop?.onCloudFeaturesChanged?.((on) => {
       cloudFeaturesRef.current = on
     })
     return () => {
