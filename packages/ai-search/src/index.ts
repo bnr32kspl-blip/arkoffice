@@ -38,10 +38,14 @@ export function isWebSearchEnabled(): boolean {
 
 // ── Web search ──────────────────────────────────────────────────────
 
-export async function webSearch(query: string, maxResults = 6): Promise<{
+export async function webSearch(
+  query: string,
+  maxResults = 6,
+): Promise<{
   results: WebSearchResult[]
   answer?: string
   method: string
+  error?: string
 }> {
   if (!isWebSearchEnabled()) {
     return { results: [], method: 'disabled' }
@@ -92,9 +96,13 @@ export async function webSearch(query: string, maxResults = 6): Promise<{
 
 // ── Image search ────────────────────────────────────────────────────
 
-export async function imageSearch(query: string, maxResults = 8): Promise<{
+export async function imageSearch(
+  query: string,
+  maxResults = 8,
+): Promise<{
   images: ImageSearchResult[]
   method: string
+  error?: string
 }> {
   if (!isWebSearchEnabled()) {
     return { images: [], method: 'disabled' }
@@ -146,7 +154,10 @@ export async function imageSearch(query: string, maxResults = 8): Promise<{
 
 // ── DuckDuckGo fallback (no key / quota exhausted) ──────────────────
 
-async function duckWebSearch(query: string, maxResults: number): Promise<{ results: WebSearchResult[] }> {
+async function duckWebSearch(
+  query: string,
+  maxResults: number,
+): Promise<{ results: WebSearchResult[] }> {
   try {
     // DuckDuckGo HTML endpoint (lightweight, no key needed)
     const resp = await fetchWithTimeout(
@@ -207,7 +218,10 @@ async function duckImageSearch(query: string, maxResults: number): Promise<Image
 
 // ── utils ───────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), init.timeoutMs ?? 15000)
   try {
@@ -218,7 +232,11 @@ async function fetchWithTimeout(url: string, init: RequestInit & { timeoutMs?: n
 }
 
 function stripTags(s: string): string {
-  return s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").trim()
+  return s
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&#x27;/g, "'")
+    .trim()
 }
 
 function decodeDuckUrl(href: string): string {

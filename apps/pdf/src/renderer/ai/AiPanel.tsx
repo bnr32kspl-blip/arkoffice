@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { AgentLoop } from '@arkoffice/agent-core'
 import type { AiSettings } from '@arkoffice/ai-provider'
-import { AiComposer, AiTypingIndicator } from '@arkoffice/ui'
+import { AiComposer, AiTypingIndicator, ArkOfficeMark, Markdown } from '@arkoffice/ui'
 import { aiLangDirective, t as tGlobal, useI18n } from '../i18n/locale'
-import { Markdown } from '@arkoffice/ui'
 import sendEnterOn from '../assets/send-enter-on.png'
 import sendEnterOff from '../assets/send-enter-off.png'
 import sendStop from '../assets/send-stop.png'
@@ -570,4 +569,3 @@ function IconCollapse(): ReactElement {
 
 /** ArkOffice brand mark (shared). */
 export { ArkOfficeMark } from '@arkoffice/ui'
-

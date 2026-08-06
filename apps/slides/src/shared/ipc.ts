@@ -1299,6 +1299,8 @@ export interface SlidesApi {
     results: Array<{ title: string; url: string; snippet: string }>
     answer?: string
     method: string
+    /** failure reason when method === 'error' */
+    error?: string
   }>
   imageSearch: (
     query: string,
@@ -1313,6 +1315,8 @@ export interface SlidesApi {
       height?: number
     }>
     method: string
+    /** failure reason when method === 'error' */
+    error?: string
   }>
   insertImageUrl: (op: {
     slideIndex: number
