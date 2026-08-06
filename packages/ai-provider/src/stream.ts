@@ -123,8 +123,10 @@ export class AiCreditsError extends Error {
 function creditsNoticeText(value: unknown): string | null {
   if (typeof value === 'string') {
     const t = value.toLowerCase()
+    // Gateway credits notices link to a /pricing page (fixture URLs use example.com;
+    // live gateways may use product-specific hosts). Also match explicit credit wording.
     const credits =
-      t.includes('genspark.ai/pricing') ||
+      t.includes('/pricing') ||
       (t.includes('credit') && (t.includes('exhausted') || t.includes('insufficient')))
     return credits ? value : null
   }
